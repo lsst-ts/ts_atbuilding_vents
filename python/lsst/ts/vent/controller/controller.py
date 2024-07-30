@@ -31,35 +31,41 @@ logger = logging.getLogger(__name__)
 
 
 class Controller:
-    """ A controller that commands the components associated with the AT dome vents and fans.
-        The code in this class is meant to run on the Raspberry Pi described in 
-        https://confluence.lsstcorp.org/display/~fritzm/Auxtel+Vent+Gate+Automation
+    """A controller that commands the components associated with the AT dome vents and fans.
+    The code in this class is meant to run on the Raspberry Pi described in
+    https://confluence.lsstcorp.org/display/~fritzm/Auxtel+Vent+Gate+Automation
     """
 
     def __init__(self):
-        """ Constructor. """
+        """Constructor."""
         logger.debug("__init__")
-        self.vfd_hostname = cfg.VFD_HOSTNAME
+
+        vfd_hostname = cfg.VFD_HOSTNAME
         if "VFD_HOSTNAME" in os.environ:
             vfd_hostname = os.environ["VFD_HOSTNAME"]
-        self.vfd_client = pymodbus.client.ModbusTcpClient(vfd_hostname)
+
+        vfd_port = cfg.VFD_PORT
+        if "VFD_PORT" in os.environ:
+            vfd_port = int(os.environ["VFD_PORT"])
+
+        self.vfd_client = pymodbus.client.ModbusTcpClient(vfd_hostname, port=vfd_port)
         self.vfd_slave = cfg.VFD_SLAVE
         self.default_fan_frequency = cfg.VFD_MAX_FREQ
 
     @property
     def vfd_manual_control(self) -> bool:
-        """ Returns the VFD setting for manual or automatic (modbus) control.
+        """Returns the VFD setting for manual or automatic (modbus) control.
 
-            Returns
-            =======
-            True if the VFD is configured to be controlled externally, or False if the VFD is configured
-            for automatic control
+        Returns
+        =======
+        True if the VFD is configured to be controlled externally, or False if the VFD is configured
+        for automatic control
 
-            Raises
-            ======
-            ValueError if the VFD settings don't match either profile
+        Raises
+        ======
+        ValueError if the VFD settings don't match either profile
 
-            ModbusException if a communications error occurs
+        ModbusException if a communications error occurs
         """
 
         logger.debug("get vfd_manual_control")
@@ -80,15 +86,15 @@ class Controller:
 
     @vfd_manual_control.setter
     def vfd_manual_control(self, manual: bool) -> None:
-        """ Sets the VFD for manual or automatic (modbus) control.
+        """Sets the VFD for manual or automatic (modbus) control.
 
-            Parameters
-            ==========
-            manual whether the VFD should be controlled manually (True) or by modbus (False)
+        Parameters
+        ==========
+        manual whether the VFD should be controlled manually (True) or by modbus (False)
 
-            Raises
-            ======
-            ModbusException if a communications error occurs
+        Raises
+        ======
+        ModbusException if a communications error occurs
         """
 
         logger.debug("set vfd_manual_control")
@@ -99,34 +105,33 @@ class Controller:
             )
 
     def start_fan(self):
-        """ Starts the dome exhaust fan
+        """Starts the dome exhaust fan
 
-            Raises
-            ======
-            ModbusException if a communications error occurs
+        Raises
+        ======
+        ModbusException if a communications error occurs
         """
         logger.debug("start_fan()")
         self.fan_frequency = self.default_fan_frequency
 
     def stop_fan(self):
-        """ Stops the dome exhaust fan
+        """Stops the dome exhaust fan
 
-            Raises
-            ======
-            ModbusException if a communications error occurs
+        Raises
+        ======
+        ModbusException if a communications error occurs
         """
         logger.debug("stop_fan()")
         self.fan_frequency = 0.0
 
     @property
     def fan_frequency(self) -> float:
-        """ Returns the target frequency configured in the VFD.
+        """Returns the target frequency configured in the VFD.
 
-            Raises
-            ======
-            ModbusException if a communications error occurs
+        Raises
+        ======
+        ModbusException if a communications error occurs
         """
-
 
         logger.debug("get fan_frequency")
         cmd = self.vfd_client.read_holding_registers(
@@ -142,18 +147,18 @@ class Controller:
 
     @fan_frequency.setter
     def fan_frequency(self, frequency: float) -> None:
-        """ Sets the target frequency for the dome exhaust fan. The frequency must be between
-            zero and VFD_MAX_FREQ.
+        """Sets the target frequency for the dome exhaust fan. The frequency must be between
+        zero and VFD_MAX_FREQ.
 
-            Parameters
-            ==========
-            frequency the desired VFD frequency in Hz
+        Parameters
+        ==========
+        frequency the desired VFD frequency in Hz
 
-            Raises
-            ======
-            ValueError if the frequency is not between zero and VFD_MAX_FREQ
+        Raises
+        ======
+        ValueError if the frequency is not between zero and VFD_MAX_FREQ
 
-            ModbusException if a communications error occurs
+        ModbusException if a communications error occurs
         """
         logger.debug("set fan_frequency")
         if not 0 <= frequency <= cfg.VFD_MAX_FREQ:
@@ -169,11 +174,11 @@ class Controller:
             )
 
     def vfd_fault_reset(self) -> None:
-        """ Resets a fault condition on the VFD so that it will operate again.
+        """Resets a fault condition on the VFD so that it will operate again.
 
-            Raises
-            ======
-            ModbusException if a communications error occurs
+        Raises
+        ======
+        ModbusException if a communications error occurs
         """
 
         for address, value in FAULT_RESET_SEQUENCE:
@@ -183,18 +188,17 @@ class Controller:
 
     @property
     def last8faults(self) -> list[tuple[int, str]]:
-        """ Returns the last eight fault conditions recorded by the VFD
+        """Returns the last eight fault conditions recorded by the VFD
 
-            Returns
-            =======
-            A list containing 8 tuples each with length 2. The first element in the tuple is
-            an integer fault code, and the second is a human-readable description of the fault code.
+        Returns
+        =======
+        A list containing 8 tuples each with length 2. The first element in the tuple is
+        an integer fault code, and the second is a human-readable description of the fault code.
 
-            Raises
-            ======
-            ModbusException if a communications error occurs
+        Raises
+        ======
+        ModbusException if a communications error occurs
         """
-
 
         logger.debug("last8faults")
         return [
@@ -203,5 +207,3 @@ class Controller:
                 slave=1, address=FAULT_REGISTER, count=8
             ).registers
         ]
-
-    

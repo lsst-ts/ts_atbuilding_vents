@@ -22,6 +22,9 @@
 VFD_HOSTNAME = "auxtel-vent-fan01"
 """ The default VFD hostname to connect to via modbus-TCP """
 
+VFD_PORT = 502
+""" The default VFD TCP port to connect to via modbus-TCP """
+
 VFD_SLAVE = 1
 """ The default modbus slave ID for the VFD """
 

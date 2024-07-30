@@ -31,27 +31,35 @@ CFG_REGISTERS = (
     8423,
     7124,
     7010,
-) """ The registers used to configure the VFD for manual or modbus-controlled operation. """
-VFD_MANUAL = (1, 1, 1, 0, 1) """ The settings used for manual operation. """
+)
+""" The registers used to configure the VFD for manual or modbus-controlled operation. """
+VFD_MANUAL = (1, 1, 1, 0, 1)
+""" The settings used for manual operation. """
 VFD_AUTO = (
     164,
     3,
     10,
     162,
     0,
-) """ The settings used for automatic operation. """
+)
+""" The settings used for automatic operation. """
 
-CMD_REGISTER = 8501 """ The CMD (command) register address """
-LFR_REGISTER = 8502 """ The LFR (frequency reference) register address """
-FAULT_REGISTER = 7201 """ The LFT (last fault code) register address """
+CMD_REGISTER = 8501
+""" The CMD (command) register address """
+
+LFR_REGISTER = 8502
+""" The LFR (frequency reference) register address """
+
+FAULT_REGISTER = 7201
+""" The LFT (last fault code) register address """
 
 FAULT_RESET_SEQUENCE = (
-    ( 8501, 0 ), # CMD
-    ( 8602, 0 ), # LFRD
-    ( 8501, 4 ), # CMD
-    ( 8602, 0 ), # LFRD
-    ( 8501, 0 ), # CMD
-    ( 8602, 0 ), # LFRD
+    (8501, 0),  # CMD
+    (8602, 0),  # LFRD
+    (8501, 4),  # CMD
+    (8602, 0),  # LFRD
+    (8501, 0),  # CMD
+    (8602, 0),  # LFRD
 )
 """ The settings needed to reset after a VFD fault """
 
