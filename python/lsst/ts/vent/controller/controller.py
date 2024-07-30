@@ -236,6 +236,8 @@ class Controller:
         logger.debug(f"vent_open({vent_number})")
         if not 0 <= vent_number <= 3:
             raise ValueError(f"Invalid {vent_number=} should be between 0 and 3")
+        if cfg.VENT_SIGNAL_CH[vent_number] == -1:
+            raise ValueError(f"Vent {vent_number=} is not configured.")
         megaind.set0_10Out(cfg.MEGAIND_STACK, cfg.VENT_SIGNAL_CH[vent_number], 10.0)
 
     def vent_close(self, vent_number: int) -> None:
@@ -255,6 +257,8 @@ class Controller:
         logger.debug(f"vent_close({vent_number})")
         if not 0 <= vent_number <= 3:
             raise ValueError(f"Invalid {vent_number=} should be between 0 and 3")
+        if cfg.VENT_SIGNAL_CH[vent_number] == -1:
+            raise ValueError(f"Vent {vent_number=} is not configured.")
         megaind.set0_10Out(cfg.MEGAIND_STACK, cfg.VENT_SIGNAL_CH[vent_number], 0.0)
 
     def vent_state(self, vent_number: int) -> VentGateState:
@@ -275,6 +279,9 @@ class Controller:
         logger.debug(f"vent_state({vent_number})")
         if not 0 <= vent_number <= 3:
             raise ValueError(f"Invalid {vent_number=} should be between 0 and 3")
+
+        if cfg.VENT_OPEN_LIMIT_CH[vent_no] == -1 or cfg.VENT_CLOSE_LIMIT_CH[vent_no] == -1:
+            raise ValueError(f"Vent {vent_number=} is not configured.")
 
         op_state = megaind.getOptoCh(cfg.MEGAIND_STACK, cfg.VENT_OPEN_LIMIT_CH[vent_no])
         cl_state = megaind.getOptoCh(
