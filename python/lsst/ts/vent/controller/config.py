@@ -30,3 +30,15 @@ VFD_SLAVE = 1
 
 VFD_MAX_FREQ = 20.0
 """ Default maximum frequency for the dome fans """
+
+MEGAIND_STACK = 1
+""" The stack level of the megaind card (selectable from address jumpers [0..7]) """
+
+VENT_SIGNAL_CH = [4, -1, -1, -1]
+""" I/O Channel open signal for the four vents on the Industrial Automation RPi hat opto-outputs """
+
+VENT_OPEN_LIMIT_CH = [1, -1, -1, -1]
+""" I/O Channel open limits for the four vents, on the Industrial Automation RPi hat opto-inputs """
+
+VENT_CLOSE_LIMIT_CH = [2, -1, -1, -1]
+""" I/O Channel close limits for the four vents, on the Industrial Automation RPi hat opto-inputs """

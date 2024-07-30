@@ -19,15 +19,26 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from enum import IntEnum
 import logging
 import os
 import pymodbus.client
+
+import megaind
 
 import config as cfg
 from vfd import *
 
 __all__ = ["Controller"]
 logger = logging.getLogger(__name__)
+
+
+class VentGateState(IntEnum):
+    _init_ = "Possible states returned by Controller.vent_state"
+    CLOSED = 0, "The vent is closed"
+    PARTIALLY_OPEN = 1, "The vent is neither open nor closed"
+    OPEN = 2, "The vent is open"
+    FAULT = -1, "The vent is both open and closed"
 
 
 class Controller:
@@ -207,3 +218,75 @@ class Controller:
                 slave=1, address=FAULT_REGISTER, count=8
             ).registers
         ]
+
+    def vent_open(self, vent_number: int) -> None:
+        """Opens the specified vent.
+
+        Parameters
+        ==========
+        vent_number the choice of vent to open, from 0 to 3
+
+        Raises
+        ======
+        ValueError if vent_number is invalid
+
+        RuntimeError if a communications error occurs
+        """
+
+        logger.debug(f"vent_open({vent_number})")
+        if not 0 <= vent_number <= 3:
+            raise ValueError(f"Invalid {vent_number=} should be between 0 and 3")
+        megaind.set0_10Out(cfg.MEGAIND_STACK, cfg.VENT_SIGNAL_CH[vent_number], 10.0)
+
+    def vent_close(self, vent_number: int) -> None:
+        """Closes the specified vent.
+
+        Parameters
+        ==========
+        vent_number the choice of vent to open, from 0 to 3
+
+        Raises
+        ======
+        ValueError if vent_number is invalid
+
+        RuntimeError if a communications error occurs
+        """
+
+        logger.debug(f"vent_close({vent_number})")
+        if not 0 <= vent_number <= 3:
+            raise ValueError(f"Invalid {vent_number=} should be between 0 and 3")
+        megaind.set0_10Out(cfg.MEGAIND_STACK, cfg.VENT_SIGNAL_CH[vent_number], 0.0)
+
+    def vent_state(self, vent_number: int) -> VentGateState:
+        """Returns the state of the specified vent.
+
+        Parameters
+        ==========
+        vent_number the choice of vent to open, from 0 to 3
+
+
+        Raises
+        ======
+        ValueError if vent_number is invalid
+
+        RuntimeError if a communications error occurs
+        """
+
+        logger.debug(f"vent_state({vent_number})")
+        if not 0 <= vent_number <= 3:
+            raise ValueError(f"Invalid {vent_number=} should be between 0 and 3")
+
+        op_state = megaind.getOptoCh(cfg.MEGAIND_STACK, cfg.VENT_OPEN_LIMIT_CH[vent_no])
+        cl_state = megaind.getOptoCh(
+            cfg.MEGAIND_STACK, cfg.VENT_CLOSE_LIMIT_CH[vent_no]
+        )
+
+        match op_state, cl_state:
+            case 1, 0:
+                return VentGateState.OPEN
+            case 0, 0:
+                return VentGateState.PARTIALLY_OPEN
+            case 0, 1:
+                return VentGateState.CLOSED
+            case _:
+                return VentGateState.FAULT
