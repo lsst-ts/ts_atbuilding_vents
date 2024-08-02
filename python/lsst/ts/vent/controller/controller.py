@@ -265,7 +265,8 @@ class Controller:
 
         Parameters
         ----------
-        vent_number the choice of vent to open, from 0 to 3
+        vent_number : int
+            the choice of vent to open, from 0 to 3
 
         Raises
         ------
