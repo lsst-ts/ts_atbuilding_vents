@@ -301,12 +301,12 @@ class Controller:
         if not 0 <= vent_number <= 3:
             raise ValueError(f"Invalid {vent_number=} should be between 0 and 3")
 
-        if cfg.VENT_OPEN_LIMIT_CH[vent_no] == -1 or cfg.VENT_CLOSE_LIMIT_CH[vent_no] == -1:
+        if cfg.VENT_OPEN_LIMIT_CH[vent_number] == -1 or cfg.VENT_CLOSE_LIMIT_CH[vent_number] == -1:
             raise ValueError(f"Vent {vent_number=} is not configured.")
 
-        op_state = megaind.getOptoCh(cfg.MEGAIND_STACK, cfg.VENT_OPEN_LIMIT_CH[vent_no])
+        op_state = megaind.getOptoCh(cfg.MEGAIND_STACK, cfg.VENT_OPEN_LIMIT_CH[vent_number])
         cl_state = megaind.getOptoCh(
-            cfg.MEGAIND_STACK, cfg.VENT_CLOSE_LIMIT_CH[vent_no]
+            cfg.MEGAIND_STACK, cfg.VENT_CLOSE_LIMIT_CH[vent_number]
         )
 
         match op_state, cl_state:

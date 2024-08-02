@@ -24,4 +24,4 @@ try:
 except ImportError:
     __version__ = "?"
 
-from .controller import Controller
+from .controller import Controller, VentGateState
