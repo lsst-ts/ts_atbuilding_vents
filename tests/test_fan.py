@@ -50,7 +50,10 @@ class TestFan(unittest.IsolatedAsyncioTestCase):
         await self.simulator.stop()
 
     async def test_fan_manual(self):
-        self.assertTrue(self.controller.fan_manual_control, "Simulated drive expected to start in manual mode")
+        self.assertTrue(
+            self.controller.fan_manual_control,
+            "Simulated drive expected to start in manual mode",
+        )
         await self.controller.fan_manual_control(False)
         self.assertFalse(
             await self.controller.get_fan_manual_control(),
@@ -64,7 +67,9 @@ class TestFan(unittest.IsolatedAsyncioTestCase):
 
     async def test_start_fan(self):
         self.assertEqual(
-            0.0, await self.controller.get_fan_frequency(), "Simulated drive expected to start with fan at zero"
+            0.0,
+            await self.controller.get_fan_frequency(),
+            "Simulated drive expected to start with fan at zero",
         )
         await self.controller.start_fan()
         self.assertEqual(
@@ -76,17 +81,23 @@ class TestFan(unittest.IsolatedAsyncioTestCase):
     async def test_fan_stop_fan(self):
         await self.controller.start_fan()
         self.assertNotEqual(
-            0.0, await self.controller.get_fan_frequency(), "start_fan should have started the fan"
+            0.0,
+            await self.controller.get_fan_frequency(),
+            "start_fan should have started the fan",
         )
         await self.controller.stop_fan()
         self.assertEqual(
-            0.0, await self.controller.get_fan_frequency(), "stop_fan should change fan frequency to 0.0"
+            0.0,
+            await self.controller.get_fan_frequency(),
+            "stop_fan should change fan frequency to 0.0",
         )
 
     async def test_set_fan_frequency(self):
         await self.controller.start_fan()
         self.assertNotEqual(
-            0.0, await self.controller.get_fan_frequency(), "start_fan should have started the fan"
+            0.0,
+            await self.controller.get_fan_frequency(),
+            "start_fan should have started the fan",
         )
         target_frequency = self.controller.default_fan_frequency / 2
         await self.controller.set_fan_frequency(target_frequency)

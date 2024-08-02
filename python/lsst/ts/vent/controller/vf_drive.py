@@ -46,7 +46,7 @@ CFG_REGISTERS = (
     Registers.RSF_REGISTER,
     Registers.SLL_REGISTER,
 )
-"""Registers to configure the drive for manual or modbus-controlled operation."""
+"""Registers to configure the drive for manual or modbus operation."""
 
 MANUAL = (1, 1, 1, 0, 1)
 """The settings used for manual operation, corresponding to CFG_REGISTERS."""
@@ -57,7 +57,7 @@ AUTO = (
     162,
     0,
 )
-"""The settings used for automatic operation, corresponding to CFG_REGISTERS."""
+"""The settings for automatic operation, corresponding to CFG_REGISTERS."""
 
 FAULT_RESET_SEQUENCE = (
     (Registers.CMD_REGISTER, 0),

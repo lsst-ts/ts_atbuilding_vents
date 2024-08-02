@@ -25,8 +25,8 @@ from enum import IntEnum
 import megaind
 import pymodbus.client
 
+from . import vf_drive
 from .config import Config
-from . import vfd
 
 __all__ = ["Controller"]
 
@@ -51,57 +51,63 @@ class Controller:
         self.log = logging.getLogger(type(self).__name__)
 
     async def connect(self) -> None:
-        """Connects to the VFD via modbus.
+        """Connects to the variable frequency drive via modbus.
 
         Raises
-        ------ 
+        ------
         ModbusException
-            If the VFD is not available.
+            If the variable frequency drive is not available.
         """
-        self.vfd_client = pymodbus.client.AsyncModbusTcpClient(self.cfg.hostname, port=self.cfg.port)
+        self.vfd_client = pymodbus.client.AsyncModbusTcpClient(
+            self.cfg.hostname, port=self.cfg.port
+        )
         await self.vfd_client.connect()
 
     async def get_fan_manual_control(self) -> bool:
-        """Returns the VFD setting for manual or automatic (modbus) control.
+        """Returns the variable frequency drive setting for manual
+        or automatic (modbus) control.
 
         Returns
         -------
         bool
-            True if the VFD is configured to be controlled externally, or False if
-            the VFD is configured for automatic control.
+            True if the drive is configured to be controlled externally, or
+            False if the drive is configured for automatic control.
 
         Raises
         ------
         ValueError
-            If the VFD settings don't match either profile.
+            If the drive settings don't match either profile.
 
         ModbusException
             If a communications error occurs.
         """
 
-        self.log.debug("get vfd_manual_control")
+        self.log.debug("get fan_manual_control")
         settings = tuple(
             [
-                (await self.vfd_client.read_holding_registers(slave=self.cfg.slave, address=addr)).registers[
-                    0
-                ]
-                for addr in vfd.CFG_REGISTERS
+                (
+                    await self.vfd_client.read_holding_registers(
+                        slave=self.cfg.slave, address=addr
+                    )
+                ).registers[0]
+                for addr in vf_drive.CFG_REGISTERS
             ]
         )
-        if settings == vfd.MANUAL:
+        if settings == vf_drive.MANUAL:
             return True
-        if settings == vfd.AUTO:
+        if settings == vf_drive.AUTO:
             return False
-        self.log.warning(f"Invalid settings in VFD: {settings=}")
-        raise ValueError("Invalid settings in VFD")
+        self.log.warning(f"Invalid settings in variable frequency drive: {settings=}")
+        raise ValueError("Invalid settings in variable frequency drive")
 
     async def fan_manual_control(self, manual: bool) -> None:
-        """Sets the VFD for manual or automatic (modbus) control.
+        """Sets the variable frequency drive for manual or automatic (modbus)
+        control of the fan.
 
         Parameters
         ----------
         manual : bool
-            Whether the VFD should be controlled manually (True) or 
+            Whether the drive should be controlled manually (True) or
             by modbus (False).
 
         Raises
@@ -111,9 +117,11 @@ class Controller:
         """
 
         self.log.debug("set vfd_manual_control")
-        settings = vfd.MANUAL if manual else vfd.AUTO
-        for address, value in zip(vfd.CFG_REGISTERS, settings):
-            await self.vfd_client.write_register(slave=self.cfg.slave, address=address, value=value)
+        settings = vf_drive.MANUAL if manual else vf_drive.AUTO
+        for address, value in zip(vf_drive.CFG_REGISTERS, settings):
+            await self.vfd_client.write_register(
+                slave=self.cfg.slave, address=address, value=value
+            )
 
     async def start_fan(self):
         """Starts the dome exhaust fan
@@ -149,7 +157,7 @@ class Controller:
         self.log.debug("get fan_frequency")
         cmd = (
             await self.vfd_client.read_holding_registers(
-                slave=self.cfg.slave, address=vfd.Registers.CMD_REGISTER
+                slave=self.cfg.slave, address=vf_drive.Registers.CMD_REGISTER
             )
         ).registers[0]
         if cmd == 0:
@@ -157,7 +165,7 @@ class Controller:
 
         lfr = (
             await self.vfd_client.read_holding_registers(
-                slave=self.cfg.slave, address=vfd.Registers.LFR_REGISTER
+                slave=self.cfg.slave, address=vf_drive.Registers.LFR_REGISTER
             )
         ).registers[0]
         return 0.1 * lfr
@@ -169,7 +177,7 @@ class Controller:
         Parameters
         ----------
         frequency : float
-            The desired VFD frequency in Hz.
+            The desired fan frequency in Hz.
 
         Raises
         ------
@@ -184,11 +192,13 @@ class Controller:
             raise ValueError(f"Frequency must be between 0 and {self.cfg.max_freq}")
 
         settings = {
-            vfd.Registers.CMD_REGISTER: 0 if frequency == 0.0 else 1,
-            vfd.Registers.LFR_REGISTER: round(frequency * 10),
+            vf_drive.Registers.CMD_REGISTER: 0 if frequency == 0.0 else 1,
+            vf_drive.Registers.LFR_REGISTER: round(frequency * 10),
         }
         for address, value in settings.items():
-            await self.vfd_client.write_register(slave=self.cfg.slave, address=address, value=value)
+            await self.vfd_client.write_register(
+                slave=self.cfg.slave, address=address, value=value
+            )
 
     async def vfd_fault_reset(self) -> None:
         """Resets a fault condition on the drive so that it will operate again.
@@ -199,8 +209,10 @@ class Controller:
             If a communications error occurs.
         """
 
-        for address, value in vfd.FAULT_RESET_SEQUENCE:
-            await self.vfd_client.write_register(slave=self.cfg.slave, address=address, value=value)
+        for address, value in vf_drive.FAULT_RESET_SEQUENCE:
+            await self.vfd_client.write_register(
+                slave=self.cfg.slave, address=address, value=value
+            )
 
     async def last8faults(self) -> list[tuple[int, str]]:
         """Returns the last eight fault conditions recorded by the drive.
@@ -208,9 +220,9 @@ class Controller:
         Returns
         -------
         list[tuple[int, str]]
-            A list containing 8 tuples each with length 2. The first element in the
-            tuple is an integer fault code, and the second is a human-readable
-            description of the fault code.
+            A list containing 8 tuples each with length 2. The first element in
+            the tuple is an integer fault code, and the second is a
+            human-readable description of the fault code.
 
         Raises
         ------
@@ -220,9 +232,9 @@ class Controller:
 
         self.log.debug("last8faults")
         rvals = await self.vfd_client.read_holding_registers(
-            slave=1, address=vfd.Registers.FAULT_REGISTER, count=8
+            slave=1, address=vf_drive.Registers.FAULT_REGISTER, count=8
         )
-        return [(r, vfd.FAULTS[r]) for r in rvals.registers]
+        return [(r, vf_drive.FAULTS[r]) for r in rvals.registers]
 
     def vent_open(self, vent_number: int) -> None:
         """Opens the specified vent.
@@ -292,11 +304,18 @@ class Controller:
         if not 0 <= vent_number <= 3:
             raise ValueError(f"Invalid {vent_number=} should be between 0 and 3")
 
-        if self.cfg.vent_open_limit_ch[vent_number] == -1 or self.cfg.vent_close_limit_ch[vent_number] == -1:
+        if (
+            self.cfg.vent_open_limit_ch[vent_number] == -1
+            or self.cfg.vent_close_limit_ch[vent_number] == -1
+        ):
             raise ValueError(f"Vent {vent_number=} is not configured.")
 
-        op_state = megaind.getOptoCh(self.cfg.megaind_stack, self.cfg.vent_open_limit_ch[vent_number])
-        cl_state = megaind.getOptoCh(self.cfg.megaind_stack, self.cfg.vent_close_limit_ch[vent_number])
+        op_state = megaind.getOptoCh(
+            self.cfg.megaind_stack, self.cfg.vent_open_limit_ch[vent_number]
+        )
+        cl_state = megaind.getOptoCh(
+            self.cfg.megaind_stack, self.cfg.vent_close_limit_ch[vent_number]
+        )
 
         match op_state, cl_state:
             case 1, 0:
