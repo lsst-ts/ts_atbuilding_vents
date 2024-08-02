@@ -34,7 +34,7 @@ class Registers(IntEnum):
     LFRD_REGISTER = 8602
 
 
-# Manual / auto VFD settings:
+# Manual / auto settings for the variable frequency drive:
 # FR1             CHCF       CD1            RSF           SLL
 # 8413            8401       8423           7124          7010
 # 1 = A1          1 = SIN    1 = TER        0 = NO        1 = YES
@@ -46,22 +46,18 @@ CFG_REGISTERS = (
     Registers.RSF_REGISTER,
     Registers.SLL_REGISTER,
 )
-""" The registers used to configure the VFD for manual or modbus-controlled
-operation.
-"""
+"""Registers to configure the drive for manual or modbus-controlled operation."""
 
-VFD_MANUAL = (1, 1, 1, 0, 1)
-""" The settings used for manual operation, corresponding to CFG_REGISTERS """
-VFD_AUTO = (
+MANUAL = (1, 1, 1, 0, 1)
+"""The settings used for manual operation, corresponding to CFG_REGISTERS."""
+AUTO = (
     164,
     3,
     10,
     162,
     0,
 )
-""" The settings used for automatic operation, corresponding to
-CFG_REGISTERS
-"""
+"""The settings used for automatic operation, corresponding to CFG_REGISTERS."""
 
 FAULT_RESET_SEQUENCE = (
     (Registers.CMD_REGISTER, 0),
@@ -71,9 +67,9 @@ FAULT_RESET_SEQUENCE = (
     (Registers.CMD_REGISTER, 0),
     (Registers.LFRD_REGISTER, 0),
 )
-""" The settings needed to reset after a VFD fault """
+"""The settings needed to reset after a drive fault."""
 
-VFD_FAULTS = {
+FAULTS = {
     0: "No fault saved",
     2: "EEprom control fault",
     3: "Incorrect configuration",
@@ -136,4 +132,4 @@ VFD_FAULTS = {
     108: "FB fault",
     109: "FB stop fault",
 }
-""" VFD Fault code descriptions """
+"""Variable frequency drive fault code descriptions."""

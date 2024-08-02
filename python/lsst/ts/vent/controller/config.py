@@ -19,34 +19,27 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-VFD_HOSTNAME = "auxtel-vent-fan01"
-""" The default VFD hostname to connect to via modbus-TCP """
+class Config:
+    hostname = "localhost"
+    """The default hostname to connect to via modbus-TCP."""
 
-VFD_PORT = 502
-""" The default VFD TCP port to connect to via modbus-TCP """
+    port = 502
+    """The default TCP port to connect to via modbus-TCP."""
 
-VFD_SLAVE = 1
-""" The default modbus slave ID for the VFD """
+    slave = 1
+    """The default modbus slave ID for the variable frequency drive."""
 
-VFD_MAX_FREQ = 20.0
-""" Default maximum frequency for the dome fans """
+    max_freq = 50.0
+    """Default maximum frequency for the dome fans."""
 
-MEGAIND_STACK = 1
-""" The stack level of the megaind card (selectable
-from address jumpers [0..7])
-"""
+    megaind_stack = 1
+    """The stack level (i2c target address) of the megaind card."""
 
-VENT_SIGNAL_CH = [4, -1, -1, -1]
-""" I/O Channel open signal for the four vents on the
-Industrial Automation RPi hat opto-outputs
-"""
+    vent_signal_ch = [4, -1, -1, -1]
+    """I/O Channel open signal for the four vents on the opto-outputs."""
 
-VENT_OPEN_LIMIT_CH = [1, -1, -1, -1]
-""" I/O Channel open limits for the four vents, on the
-Industrial Automation RPi hat opto-inputs
-"""
+    vent_open_limit_ch = [1, -1, -1, -1]
+    """I/O Channel open limits for the four vents, on the opto-inputs."""
 
-VENT_CLOSE_LIMIT_CH = [2, -1, -1, -1]
-""" I/O Channel close limits for the four vents, on the
-Industrial Automation RPi hat opto-inputs
-"""
+    vent_close_limit_ch = [2, -1, -1, -1]
+    """I/O Channel close limits for the four vents, on the opto-inputs."""

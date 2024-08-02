@@ -23,16 +23,13 @@ import asyncio
 import os
 import unittest
 
-from lsst.ts.vent.controller import Controller
+from lsst.ts.vent.controller import Config, Controller
 from pymodbus.server import ModbusSimulatorServer
 
 
-class TestVfd(unittest.IsolatedAsyncioTestCase):
+class TestFan(unittest.IsolatedAsyncioTestCase):
 
     async def asyncSetUp(self):
-        os.environ["VFD_HOSTNAME"] = "localhost"
-        os.environ["VFD_PORT"] = "26034"
-
         self.loop = asyncio.new_event_loop()
         self.simulator = ModbusSimulatorServer(
             modbus_server="server",
@@ -43,28 +40,31 @@ class TestVfd(unittest.IsolatedAsyncioTestCase):
         )
         await self.simulator.run_forever(only_start=True)
 
-        self.controller = Controller()
+        cfg = Config()
+        cfg.hostname = "localhost"
+        cfg.port = 26034
+        self.controller = Controller(cfg)
         await self.controller.connect()
 
     async def asyncTearDown(self):
         await self.simulator.stop()
 
-    async def test_vfd_manual(self):
-        self.assertTrue(self.controller.vfd_manual_control, "Simulated VFD expected to start in manual mode")
-        await self.controller.vfd_manual_control(False)
+    async def test_fan_manual(self):
+        self.assertTrue(self.controller.fan_manual_control, "Simulated drive expected to start in manual mode")
+        await self.controller.fan_manual_control(False)
         self.assertFalse(
-            await self.controller.get_vfd_manual_control(),
-            "set_vfd_manual_control should change VFD state (to False)",
+            await self.controller.get_fan_manual_control(),
+            "set_fan_manual_control should change state (to False)",
         )
-        await self.controller.vfd_manual_control(True)
+        await self.controller.fan_manual_control(True)
         self.assertTrue(
-            await self.controller.get_vfd_manual_control(),
-            "set_vfd_manual_control should change VFD state (to True)",
+            await self.controller.get_fan_manual_control(),
+            "set_fan_manual_control should change state (to True)",
         )
 
-    async def test_vfd_start_fan(self):
+    async def test_start_fan(self):
         self.assertEqual(
-            0.0, await self.controller.get_fan_frequency(), "Simulated VFD expected to start with fan at zero"
+            0.0, await self.controller.get_fan_frequency(), "Simulated drive expected to start with fan at zero"
         )
         await self.controller.start_fan()
         self.assertEqual(
@@ -73,7 +73,7 @@ class TestVfd(unittest.IsolatedAsyncioTestCase):
             "start_fan should change fan frequency to default value",
         )
 
-    async def test_vfd_stop_fan(self):
+    async def test_fan_stop_fan(self):
         await self.controller.start_fan()
         self.assertNotEqual(
             0.0, await self.controller.get_fan_frequency(), "start_fan should have started the fan"
@@ -83,7 +83,7 @@ class TestVfd(unittest.IsolatedAsyncioTestCase):
             0.0, await self.controller.get_fan_frequency(), "stop_fan should change fan frequency to 0.0"
         )
 
-    async def test_vfd_set_fan_frequency(self):
+    async def test_set_fan_frequency(self):
         await self.controller.start_fan()
         self.assertNotEqual(
             0.0, await self.controller.get_fan_frequency(), "start_fan should have started the fan"

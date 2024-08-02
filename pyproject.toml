@@ -9,13 +9,5 @@ license = { text = "GPL" }
 urls = { source_code = "https://github.com/lsst-ts/ts_atbuilding_vents"}
 dynamic = ["version"]
 
-[tool.black]
-line-length = 110
-target-version = ["py311"]
-
-[tool.isort]
-profile = "black"
-line_length = 110
-
 [tool.setuptools.packages.find]
 where = ["python"]
