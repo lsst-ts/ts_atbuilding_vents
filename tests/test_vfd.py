@@ -19,13 +19,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import unittest
-
-from pymodbus.server import ModbusSimulatorServer
 import asyncio
 import os
+import unittest
 
 from lsst.ts.vent.controller import Controller
+from pymodbus.server import ModbusSimulatorServer
 
 
 class TestVfd(unittest.IsolatedAsyncioTestCase):
@@ -97,10 +96,10 @@ class TestVfd(unittest.IsolatedAsyncioTestCase):
             places=1,
             msg="set_fan_frequency should change fan frequency to 50.0",
         )
-        
+
     async def test_fault_recover(self):
         r = await self.controller.vfd_fault_reset()
-        self.assertIsNone(r) # Yay I guess
+        self.assertIsNone(r)  # Yay I guess
 
     async def test_last8faults(self):
         last8 = await self.controller.last8faults()

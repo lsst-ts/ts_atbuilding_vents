@@ -19,16 +19,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import asyncio
-from enum import IntEnum
 import logging
 import os
-import pymodbus.client
+from enum import IntEnum
 
 import megaind
+import pymodbus.client
 
 from . import config as cfg
-from .vfd import *
+from . import vfd
 
 __all__ = ["Controller"]
 logger = logging.getLogger(__name__)
@@ -57,8 +56,9 @@ class VentGateState(IntEnum):
 
 
 class Controller:
-    """A controller that commands the components associated with the AT dome vents and fans.
-    The code in this class is meant to run on the Raspberry Pi described in
+    """A controller that commands the components associated with the AT dome
+    vents and fans. The code in this class is meant to run on the Raspberry Pi
+    described in
     https://confluence.lsstcorp.org/display/~fritzm/Auxtel+Vent+Gate+Automation
     """
 
@@ -78,7 +78,6 @@ class Controller:
         self.vfd_slave = cfg.VFD_SLAVE
         self.default_fan_frequency = cfg.VFD_MAX_FREQ
 
-
     async def connect(self) -> None:
         """Connects to the VFD via modbus.
 
@@ -88,14 +87,13 @@ class Controller:
         """
         await self.vfd_client.connect()
 
-
     async def get_vfd_manual_control(self) -> bool:
         """Returns the VFD setting for manual or automatic (modbus) control.
 
         Returns
         =======
-        True if the VFD is configured to be controlled externally, or False if the VFD is configured
-        for automatic control
+        True if the VFD is configured to be controlled externally, or False if
+        the VFD is configured for automatic control
 
         Raises
         ======
@@ -107,15 +105,15 @@ class Controller:
         logger.debug("get vfd_manual_control")
         settings = tuple(
             [
-                (await self.vfd_client.read_holding_registers(
-                    slave=self.vfd_slave, address=addr
-                )).registers[0]
-                for addr in CFG_REGISTERS
+                (await self.vfd_client.read_holding_registers(slave=self.vfd_slave, address=addr)).registers[
+                    0
+                ]
+                for addr in vfd.CFG_REGISTERS
             ]
         )
-        if settings == VFD_MANUAL:
+        if settings == vfd.VFD_MANUAL:
             return True
-        if settings == VFD_AUTO:
+        if settings == vfd.VFD_AUTO:
             return False
         logger.warning(f"Invalid settings in VFD: {settings=}")
         raise ValueError("Invalid settings in VFD")
@@ -125,7 +123,8 @@ class Controller:
 
         Parameters
         ==========
-        manual whether the VFD should be controlled manually (True) or by modbus (False)
+        manual whether the VFD should be controlled manually (True) or by
+               modbus (False)
 
         Raises
         ======
@@ -133,11 +132,9 @@ class Controller:
         """
 
         logger.debug("set vfd_manual_control")
-        settings = VFD_MANUAL if manual else VFD_AUTO
-        for address, value in zip(CFG_REGISTERS, settings):
-            await self.vfd_client.write_register(
-                slave=self.vfd_slave, address=address, value=value
-            )
+        settings = vfd.VFD_MANUAL if manual else vfd.VFD_AUTO
+        for address, value in zip(vfd.CFG_REGISTERS, settings):
+            await self.vfd_client.write_register(slave=self.vfd_slave, address=address, value=value)
 
     async def start_fan(self):
         """Starts the dome exhaust fan
@@ -168,20 +165,24 @@ class Controller:
         """
 
         logger.debug("get fan_frequency")
-        cmd = (await self.vfd_client.read_holding_registers(
-            slave=self.vfd_slave, address=Registers.CMD_REGISTER
-        )).registers[0]
+        cmd = (
+            await self.vfd_client.read_holding_registers(
+                slave=self.vfd_slave, address=vfd.Registers.CMD_REGISTER
+            )
+        ).registers[0]
         if cmd == 0:
             return 0.0
 
-        lfr = (await self.vfd_client.read_holding_registers(
-            slave=self.vfd_slave, address=Registers.LFR_REGISTER
-        )).registers[0]
+        lfr = (
+            await self.vfd_client.read_holding_registers(
+                slave=self.vfd_slave, address=vfd.Registers.LFR_REGISTER
+            )
+        ).registers[0]
         return 0.1 * lfr
 
     async def set_fan_frequency(self, frequency: float) -> None:
-        """Sets the target frequency for the dome exhaust fan. The frequency must be between
-        zero and VFD_MAX_FREQ.
+        """Sets the target frequency for the dome exhaust fan. The frequency
+        must be between zero and VFD_MAX_FREQ.
 
         Parameters
         ==========
@@ -198,13 +199,11 @@ class Controller:
             raise ValueError(f"Frequency must be between 0 and {cfg.VFD_MAX_FREQ}")
 
         settings = {
-            Registers.CMD_REGISTER: 0 if frequency == 0.0 else 1,
-            Registers.LFR_REGISTER: round(frequency * 10),
+            vfd.Registers.CMD_REGISTER: 0 if frequency == 0.0 else 1,
+            vfd.Registers.LFR_REGISTER: round(frequency * 10),
         }
         for address, value in settings.items():
-            await self.vfd_client.write_register(
-                slave=self.vfd_slave, address=address, value=value
-            )
+            await self.vfd_client.write_register(slave=self.vfd_slave, address=address, value=value)
 
     async def vfd_fault_reset(self) -> None:
         """Resets a fault condition on the VFD so that it will operate again.
@@ -214,18 +213,17 @@ class Controller:
         ModbusException if a communications error occurs
         """
 
-        for address, value in FAULT_RESET_SEQUENCE:
-            await self.vfd_client.write_register(
-                slave=self.vfd_slave, address=address, value=value
-            )
+        for address, value in vfd.FAULT_RESET_SEQUENCE:
+            await self.vfd_client.write_register(slave=self.vfd_slave, address=address, value=value)
 
     async def last8faults(self) -> list[tuple[int, str]]:
         """Returns the last eight fault conditions recorded by the VFD
 
         Returns
         =======
-        A list containing 8 tuples each with length 2. The first element in the tuple is
-        an integer fault code, and the second is a human-readable description of the fault code.
+        A list containing 8 tuples each with length 2. The first element in the
+        tuple is an integer fault code, and the second is a human-readable
+        description of the fault code.
 
         Raises
         ======
@@ -234,11 +232,9 @@ class Controller:
 
         logger.debug("last8faults")
         rvals = await self.vfd_client.read_holding_registers(
-            slave=1, address=Registers.FAULT_REGISTER, count=8
+            slave=1, address=vfd.Registers.FAULT_REGISTER, count=8
         )
-        return [
-            (r, VFD_FAULTS[r]) for r in rvals.registers
-        ]
+        return [(r, vfd.VFD_FAULTS[r]) for r in rvals.registers]
 
     def vent_open(self, vent_number: int) -> None:
         """Opens the specified vent.
@@ -305,9 +301,7 @@ class Controller:
             raise ValueError(f"Vent {vent_number=} is not configured.")
 
         op_state = megaind.getOptoCh(cfg.MEGAIND_STACK, cfg.VENT_OPEN_LIMIT_CH[vent_number])
-        cl_state = megaind.getOptoCh(
-            cfg.MEGAIND_STACK, cfg.VENT_CLOSE_LIMIT_CH[vent_number]
-        )
+        cl_state = megaind.getOptoCh(cfg.MEGAIND_STACK, cfg.VENT_CLOSE_LIMIT_CH[vent_number])
 
         match op_state, cl_state:
             case 1, 0:

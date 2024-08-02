@@ -33,8 +33,6 @@ class Registers(IntEnum):
     LFR_REGISTER = 8502
     LFRD_REGISTER = 8602
 
-    
-
 
 # Manual / auto VFD settings:
 # FR1             CHCF       CD1            RSF           SLL
@@ -48,9 +46,12 @@ CFG_REGISTERS = (
     Registers.RSF_REGISTER,
     Registers.SLL_REGISTER,
 )
-""" The registers used to configure the VFD for manual or modbus-controlled operation. """
+""" The registers used to configure the VFD for manual or modbus-controlled
+operation.
+"""
+
 VFD_MANUAL = (1, 1, 1, 0, 1)
-""" The settings used for manual operation. """
+""" The settings used for manual operation, corresponding to CFG_REGISTERS """
 VFD_AUTO = (
     164,
     3,
@@ -58,7 +59,9 @@ VFD_AUTO = (
     162,
     0,
 )
-""" The settings used for automatic operation. """
+""" The settings used for automatic operation, corresponding to
+CFG_REGISTERS
+"""
 
 FAULT_RESET_SEQUENCE = (
     (Registers.CMD_REGISTER, 0),
