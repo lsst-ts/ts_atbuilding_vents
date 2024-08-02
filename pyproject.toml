@@ -1,3 +1,21 @@
-# Pytest configuration required to prevent pytest from looking for
-# configurations in parent directories. Can be empty.
-[tool.pytest.ini_options]
+[build-system]
+requires = ["setuptools>=45", "setuptools-scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ts_atbuilding_vents"
+description = "AT dome vent controller for `Vera C. Rubin Observatory <https://lsst.org>`_."
+license = { text = "GPL" }
+urls = { source_code = "https://github.com/lsst-ts/ts_atbuilding_vents"}
+dynamic = ["version"]
+
+[tool.black]
+line-length = 110
+target-version = ["py311"]
+
+[tool.isort]
+profile = "black"
+line_length = 110
+
+[tool.setuptools.packages.find]
+where = ["python"]

@@ -19,6 +19,22 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from enum import IntEnum
+
+
+class Registers(IntEnum):
+    SLL_REGISTER = 7010
+    RSF_REGISTER = 7124
+    FAULT_REGISTER = 7201
+    CHCF_REGISTER = 8401
+    FR1_REGISTER = 8413
+    CD1_REGISTER = 8423
+    CMD_REGISTER = 8501
+    LFR_REGISTER = 8502
+    LFRD_REGISTER = 8602
+
+    
+
 
 # Manual / auto VFD settings:
 # FR1             CHCF       CD1            RSF           SLL
@@ -26,11 +42,11 @@
 # 1 = A1          1 = SIN    1 = TER        0 = NO        1 = YES
 # 164 = modbus    3 = IO     10 = modbus    162 = CD02    0 = NO
 CFG_REGISTERS = (
-    8413,
-    8401,
-    8423,
-    7124,
-    7010,
+    Registers.FR1_REGISTER,
+    Registers.CHCF_REGISTER,
+    Registers.CD1_REGISTER,
+    Registers.RSF_REGISTER,
+    Registers.SLL_REGISTER,
 )
 """ The registers used to configure the VFD for manual or modbus-controlled operation. """
 VFD_MANUAL = (1, 1, 1, 0, 1)
@@ -44,22 +60,13 @@ VFD_AUTO = (
 )
 """ The settings used for automatic operation. """
 
-CMD_REGISTER = 8501
-""" The CMD (command) register address """
-
-LFR_REGISTER = 8502
-""" The LFR (frequency reference) register address """
-
-FAULT_REGISTER = 7201
-""" The LFT (last fault code) register address """
-
 FAULT_RESET_SEQUENCE = (
-    (8501, 0),  # CMD
-    (8602, 0),  # LFRD
-    (8501, 4),  # CMD
-    (8602, 0),  # LFRD
-    (8501, 0),  # CMD
-    (8602, 0),  # LFRD
+    (Registers.CMD_REGISTER, 0),
+    (Registers.LFRD_REGISTER, 0),
+    (Registers.CMD_REGISTER, 4),
+    (Registers.LFRD_REGISTER, 0),
+    (Registers.CMD_REGISTER, 0),
+    (Registers.LFRD_REGISTER, 0),
 )
 """ The settings needed to reset after a VFD fault """
 

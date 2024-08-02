@@ -1,0 +1,56 @@
+{
+     "server_list": {
+         "server": {
+             "comm": "tcp",
+             "host": "0.0.0.0",
+             "port": 26034,
+             "framer": "socket"
+         }
+     },
+     "device_list": {
+        "device": {
+           "setup": {
+                "co size": 10000,
+                "di size": 10000,
+                "hr size": 10000,
+                "ir size": 10000,
+                "shared blocks": true,
+                "type exception": true,
+                "defaults": {
+                    "value": {
+                        "bits": 0,
+                        "uint16": 0,
+                        "uint32": 0,
+                        "float32": 0.0,
+                        "string": " "
+                    },
+		    "action": {
+	                "bits": null,
+			"uint16": null,
+			"uint32": null,
+			"float32": null,
+			"string": null
+		    }
+                }
+            },
+	    "invalid": [],
+            "write": [ 7010, 7124, 8401, 8413, 8423, 8501, 8502, 8602],
+            "bits": [],
+	    "uint16": [
+		{ "addr": 7010, "value": 1 },
+                { "addr": 7124, "value": 0 },
+                { "addr": [ 7201, 7211 ], "value": 22 },
+                { "addr": 8401, "value": 1 },
+	        { "addr": 8413, "value": 1 },
+                { "addr": 8423, "value": 1 },
+                { "addr": 8501, "value": 0 },
+                { "addr": 8502, "value": 0 },
+                { "addr": 8602, "value": 0 }
+	    ],
+	    "uint32": [],
+            "float32": [],
+            "string": [],
+            "repeat": []
+        }
+     }
+}
