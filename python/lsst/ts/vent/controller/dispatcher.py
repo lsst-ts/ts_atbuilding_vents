@@ -55,7 +55,6 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
             return
 
         self.log.debug(f"Received command: {data!r}")
-        print(f"Received command: {data!r}")
 
         command, *args = data.split()
         if command not in self.dispatch_dict:
@@ -71,7 +70,6 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
             args = [ _type_convert(t, arg) for t, arg in zip(types, args) ]
             await getattr(self, command)(*args)
             await self.respond(f"{command} OK")
-            print(f"{command} OK")
         except Exception as e:
             exc_formatted = traceback.format_exception(type(e), e, e.__traceback__)
             for ef in exc_formatted:
