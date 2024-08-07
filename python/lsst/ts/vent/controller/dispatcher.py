@@ -5,6 +5,7 @@ from lsst.ts import tcpip
 
 from .controller import Controller
 
+
 def _type_convert(t: type, value: str):
     """Converts the value string to the specified type. In the case of boolean,
     "True" or "T" or "1" is ``True`` and everything else is ``False``. Other
@@ -23,13 +24,16 @@ def _type_convert(t: type, value: str):
     ValueError
         If the value cannot be converted to the specified type.
     """
-    
+
     if t == bool:  # Boolean is a special case
-        return value.lower() in ("true", "t", "1") 
+        return value.lower() in ("true", "t", "1")
     return t(value)
 
+
 class Dispatcher(tcpip.OneClientReadLoopServer):
-    def __init__(self, port: int, log: logging.Logger, controller: Controller = Controller()):
+    def __init__(
+        self, port: int, log: logging.Logger, controller: Controller = Controller()
+    ):
         self.dispatch_dict = {
             "closeVentGate": [int],
             "openVentGate": [int],
@@ -63,11 +67,13 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
 
         types = self.dispatch_dict[command]
         if len(args) != len(types):
-            await self.respond(f"{command} raise TypeError('{command} expected {len(types)} arguments')")
+            await self.respond(
+                f"{command} raise TypeError('{command} expected {len(types)} arguments')"
+            )
             return
 
         try:
-            args = [ _type_convert(t, arg) for t, arg in zip(types, args) ]
+            args = [_type_convert(t, arg) for t, arg in zip(types, args)]
             await getattr(self, command)(*args)
             await self.respond(f"{command} OK")
         except Exception as e:
@@ -76,19 +82,21 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
                 self.log.exception(ef)
             await self.respond(f"{command} raise {e!r}")
 
-    async def closeVentGate(self, gate: int) -> None: 
+    async def closeVentGate(self, gate: int) -> None:
         self.controller.vent_close(gate)
 
-    async def openVentGate(self, gate: int) -> None: 
+    async def openVentGate(self, gate: int) -> None:
         self.controller.vent_open(gate)
 
-    async def resetExtractionFanDrive(self) -> None: 
+    async def resetExtractionFanDrive(self) -> None:
         await self.controller.vfd_fault_reset()
 
     async def setExtractionFanDriveFreq(self, targetFrequency: float) -> None:
         await self.controller.set_fan_frequency(targetFrequency)
 
-    async def setExtractionFanManualControlMode(self, enableManualControlMode: bool) -> None:
+    async def setExtractionFanManualControlMode(
+        self, enableManualControlMode: bool
+    ) -> None:
         await self.controller.fan_manual_control(enableManualControlMode)
 
     async def startExtractionFan(self) -> None:
