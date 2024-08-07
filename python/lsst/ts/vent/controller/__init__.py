@@ -26,3 +26,4 @@ except ImportError:
 
 from .config import Config
 from .controller import Controller, VentGateState
+from .dispatcher import Dispatcher
