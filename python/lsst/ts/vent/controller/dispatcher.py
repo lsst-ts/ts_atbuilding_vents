@@ -109,7 +109,7 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
             # Send back a success response.
             await self.respond(f"{command} OK")
         except Exception as e:
-            self.log.exception(f"{e!r}")
+            self.log.exception(f"Exception raised while handling command {command}: {e!r}")
             await self.respond(f"{command} raise {e!r}")
 
     async def close_vent_gate(self, gate: int) -> None:
