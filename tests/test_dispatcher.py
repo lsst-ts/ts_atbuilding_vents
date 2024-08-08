@@ -62,63 +62,63 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
         """Check basic functionality with a ping command."""
         self.assertEqual(await self.send_and_receive("ping"), "ping OK")
 
-    async def test_closeVentGate(self):
-        """Test closeVentGate command."""
+    async def test_close_vent_gate(self):
+        """Test close_vent_gate command."""
         self.assertEqual(
-            await self.send_and_receive("closeVentGate 123"), "closeVentGate OK"
+            await self.send_and_receive("close_vent_gate 123"), "close_vent_gate OK"
         )
         self.mock_controller.vent_close.assert_called_once_with(123)
 
-    async def test_openVentGate(self):
-        """Test openVentGate command."""
+    async def test_open_vent_gate(self):
+        """Test open_vent_gate command."""
         self.assertEqual(
-            await self.send_and_receive("openVentGate 234"), "openVentGate OK"
+            await self.send_and_receive("open_vent_gate 234"), "open_vent_gate OK"
         )
         self.mock_controller.vent_open.assert_called_once_with(234)
 
-    async def test_resetExtractionFanDrive(self):
-        """Test resetExtractionFanDrive command."""
+    async def test_reset_extraction_fan_drive(self):
+        """Test reset_extraction_fan_drive command."""
         self.assertEqual(
-            await self.send_and_receive("resetExtractionFanDrive"),
-            "resetExtractionFanDrive OK",
+            await self.send_and_receive("reset_extraction_fan_drive"),
+            "reset_extraction_fan_drive OK",
         )
         self.mock_controller.vfd_fault_reset.assert_called_once_with()
 
-    async def test_setExtractionFanDriveFreq(self):
-        """Test setExtractionFanDriveFreq command."""
+    async def test_set_extraction_fan_drive_freq(self):
+        """Test set_extraction_fan_drive_freq command."""
         self.assertEqual(
-            await self.send_and_receive("setExtractionFanDriveFreq 22.5"),
-            "setExtractionFanDriveFreq OK",
+            await self.send_and_receive("set_extraction_fan_drive_freq 22.5"),
+            "set_extraction_fan_drive_freq OK",
         )
         self.mock_controller.set_fan_frequency.assert_called_once_with(22.5)
 
-    async def test_setExtractionFanManualControlMode_true(self):
+    async def test_set_extraction_fan_manual_control_mode_true(self):
         """Test setExtractionFanManualControlMode with argument True."""
         self.assertEqual(
-            await self.send_and_receive("setExtractionFanManualControlMode True"),
-            "setExtractionFanManualControlMode OK",
+            await self.send_and_receive("set_extraction_fan_manual_control_mode True"),
+            "set_extraction_fan_manual_control_mode OK",
         )
         self.mock_controller.fan_manual_control.assert_called_once_with(True)
 
-    async def test_setExtractionFanManualControlMode_false(self):
-        """Test setExtractionFanManualControlMode with argument False."""
+    async def test_set_extraction_fan_manual_control_mode_false(self):
+        """Test set_extraction_fan_manual_control_mode with argument False."""
         self.assertEqual(
-            await self.send_and_receive("setExtractionFanManualControlMode False"),
-            "setExtractionFanManualControlMode OK",
+            await self.send_and_receive("set_extraction_fan_manual_control_mode False"),
+            "set_extraction_fan_manual_control_mode OK",
         )
         self.mock_controller.fan_manual_control.assert_called_once_with(False)
 
-    async def test_startExtractionFan(self):
-        """Test startExtractionFan command."""
+    async def test_start_extraction_fan(self):
+        """Test start_extraction_fan command."""
         self.assertEqual(
-            await self.send_and_receive("startExtractionFan"), "startExtractionFan OK"
+            await self.send_and_receive("start_extraction_fan"), "start_extraction_fan OK"
         )
         self.mock_controller.start_fan.assert_called_once_with()
 
-    async def test_stopExtractionFan(self):
-        """Test stopExtractionFan command."""
+    async def test_stop_extraction_fan(self):
+        """Test stop_extraction_fan command."""
         self.assertEqual(
-            await self.send_and_receive("stopExtractionFan"), "stopExtractionFan OK"
+            await self.send_and_receive("stop_extraction_fan"), "stop_extraction_fan OK"
         )
         self.mock_controller.stop_fan.assert_called_once_with()
 
@@ -131,21 +131,21 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
 
     async def test_wrongargumenttype(self):
         """Test with incorrect argument types."""
-        response = await self.send_and_receive("closeVentGate 0.5")
-        self.assertTrue("closeVentGate raise ValueError(" in response)
+        response = await self.send_and_receive("close_vent_gate 0.5")
+        self.assertTrue("close_vent_gate raise ValueError(" in response)
 
     async def test_wrongargumentcount(self):
         """Test for incorrect number of arguments."""
-        response = await self.send_and_receive("closeVentGate")
+        response = await self.send_and_receive("close_vent_gate")
         self.assertEqual(
             response,
-            "closeVentGate raise TypeError('closeVentGate expected 1 arguments')",
+            "close_vent_gate raise TypeError('close_vent_gate expected 1 arguments')",
         )
 
-        response = await self.send_and_receive("openVentGate 1 2 3")
+        response = await self.send_and_receive("open_vent_gate 1 2 3")
         self.assertEqual(
             response,
-            "openVentGate raise TypeError('openVentGate expected 1 arguments')",
+            "open_vent_gate raise TypeError('open_vent_gate expected 1 arguments')",
         )
 
         response = await self.send_and_receive("ping 3.14159")
