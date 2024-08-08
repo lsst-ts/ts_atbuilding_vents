@@ -111,7 +111,8 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
     async def test_start_extraction_fan(self):
         """Test start_extraction_fan command."""
         self.assertEqual(
-            await self.send_and_receive("start_extraction_fan"), "start_extraction_fan OK"
+            await self.send_and_receive("start_extraction_fan"),
+            "start_extraction_fan OK",
         )
         self.mock_controller.start_fan.assert_called_once_with()
 

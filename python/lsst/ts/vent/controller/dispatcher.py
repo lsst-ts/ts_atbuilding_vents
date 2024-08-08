@@ -1,5 +1,4 @@
 import logging
-import traceback
 
 from lsst.ts import tcpip
 
@@ -83,16 +82,20 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
 
         self.log.debug(f"Received command: {data!r}")
 
-        command, *args = data.split()  # Tokenize the command and break out the first word as the method.
+        command, *args = (
+            data.split()
+        )  # Tokenize the command and break out the first word as the method.
         if command not in self.dispatch_dict:
-            # If the command string is not in the dictionary, send back an error and do nothing.
+            # If the command string is not in the dictionary, send back an
+            # error and do nothing.
             await self.respond(f"{command} raise NotImplementedError()")
             return
 
         # Pull the handler and the argument list from the dictionary.
         types = self.dispatch_dict[command]
         if len(args) != len(types):
-            # If the arguments don't match the list in the dictionary, send back an error.
+            # If the arguments don't match the list in the dictionary, send
+            # back an error.
             await self.respond(
                 f"{command} raise TypeError('{command} expected {len(types)} arguments')"
             )
