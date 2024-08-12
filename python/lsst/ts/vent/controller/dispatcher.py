@@ -87,6 +87,7 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
                         error=1,
                         exception_name="NotImplementedError",
                         message="No such command",
+                        traceback="",
                     )
                 )
             )
@@ -104,6 +105,7 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
                         error=1,
                         exception_name="TypeError",
                         message=f"Error while handling command {command}.",
+                        traceback="",
                     )
                 )
             )
@@ -120,6 +122,9 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
                     dict(
                         command=command,
                         error=0,
+                        exception_name="",
+                        message="",
+                        traceback="",
                     )
                 )
             )
