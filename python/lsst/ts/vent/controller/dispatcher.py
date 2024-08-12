@@ -1,4 +1,6 @@
+import json
 import logging
+import traceback
 
 from lsst.ts import tcpip
 
@@ -40,17 +42,7 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
     .. code-block::
         name_of_the_command arg1 arg2 arg3
 
-    And responses take the form
-
-    .. code-block::
-        name_of_the_command OK
-
-    in the case of success or
-
-    .. code-block::
-        name_of_the_command raise NameOfError('string describing the error')
-
-    in the case of failure.
+    And responses take the form of JSON.
     """
 
     def __init__(
@@ -66,7 +58,7 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
             "stop_extraction_fan": [],
             "ping": [],
         }
-        self.controller = controller if controller is not None else Controller
+        self.controller = controller if controller is not None else Controller()
 
         super().__init__(port=port, log=log, terminator=b"\r")
 
@@ -88,7 +80,16 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
         if command not in self.dispatch_dict:
             # If the command string is not in the dictionary, send back an
             # error and do nothing.
-            await self.respond(f"{command} raise NotImplementedError()")
+            await self.respond(
+                json.dumps(
+                    dict(
+                        command=command,
+                        error=1,
+                        exception_name="NotImplementedError",
+                        message="No such command",
+                    )
+                )
+            )
             return
 
         # Pull the handler and the argument list from the dictionary.
@@ -97,7 +98,14 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
             # If the arguments don't match the list in the dictionary, send
             # back an error.
             await self.respond(
-                f"{command} raise TypeError('{command} expected {len(types)} arguments')"
+                json.dumps(
+                    dict(
+                        command=command,
+                        error=1,
+                        exception_name="TypeError",
+                        message=f"Error while handling command {command}.",
+                    )
+                )
             )
             return
 
@@ -107,10 +115,27 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
             # Call the method with the specified arguments.
             await getattr(self, command)(*args)
             # Send back a success response.
-            await self.respond(f"{command} OK")
+            await self.respond(
+                json.dumps(
+                    dict(
+                        command=command,
+                        error=0,
+                    )
+                )
+            )
         except Exception as e:
-            self.log.exception(f"Exception raised while handling command {command}: {e!r}")
-            await self.respond(f"{command} raise {e!r}")
+            self.log.exception(f"Exception raised while handling command {command}")
+            await self.respond(
+                json.dumps(
+                    dict(
+                        command=command,
+                        error=1,
+                        exception_name=type(e).__name__,
+                        message=str(e),
+                        traceback=traceback.format_exc(),
+                    )
+                )
+            )
 
     async def close_vent_gate(self, gate: int) -> None:
         self.controller.vent_close(gate)

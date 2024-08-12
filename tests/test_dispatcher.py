@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -58,96 +59,93 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
         response = response.strip()
         return response
 
+    def check_response(
+        self, response: str, expected_command: str, expected_error: str | None = None
+    ) -> dict:
+        print(f"{response=}")
+        json_data = json.loads(response)
+        self.assertEqual(json_data["command"], expected_command)
+        if expected_error is None:
+            self.assertEqual(json_data["error"], 0)
+        else:
+            self.assertNotEqual(json_data["error"], 0)
+            self.assertEqual(json_data["exception_name"], expected_error)
+            self.assertTrue("message" in json_data)
+
     async def test_ping(self):
         """Check basic functionality with a ping command."""
-        self.assertEqual(await self.send_and_receive("ping"), "ping OK")
+        response = await self.send_and_receive("ping")
+        self.check_response(response, "ping")
 
     async def test_close_vent_gate(self):
         """Test close_vent_gate command."""
-        self.assertEqual(
-            await self.send_and_receive("close_vent_gate 123"), "close_vent_gate OK"
-        )
+        response = await self.send_and_receive("close_vent_gate 123")
+        self.check_response(response, "close_vent_gate")
         self.mock_controller.vent_close.assert_called_once_with(123)
 
     async def test_open_vent_gate(self):
         """Test open_vent_gate command."""
-        self.assertEqual(
-            await self.send_and_receive("open_vent_gate 234"), "open_vent_gate OK"
-        )
+        response = await self.send_and_receive("open_vent_gate 234")
+        self.check_response(response, "open_vent_gate")
         self.mock_controller.vent_open.assert_called_once_with(234)
 
     async def test_reset_extraction_fan_drive(self):
         """Test reset_extraction_fan_drive command."""
-        self.assertEqual(
-            await self.send_and_receive("reset_extraction_fan_drive"),
-            "reset_extraction_fan_drive OK",
-        )
+        response = await self.send_and_receive("reset_extraction_fan_drive")
+        self.check_response(response, "reset_extraction_fan_drive")
         self.mock_controller.vfd_fault_reset.assert_called_once_with()
 
     async def test_set_extraction_fan_drive_freq(self):
         """Test set_extraction_fan_drive_freq command."""
-        self.assertEqual(
-            await self.send_and_receive("set_extraction_fan_drive_freq 22.5"),
-            "set_extraction_fan_drive_freq OK",
-        )
+        response = await self.send_and_receive("set_extraction_fan_drive_freq 22.5")
+        self.check_response(response, "set_extraction_fan_drive_freq")
         self.mock_controller.set_fan_frequency.assert_called_once_with(22.5)
 
     async def test_set_extraction_fan_manual_control_mode_true(self):
         """Test setExtractionFanManualControlMode with argument True."""
-        self.assertEqual(
-            await self.send_and_receive("set_extraction_fan_manual_control_mode True"),
-            "set_extraction_fan_manual_control_mode OK",
+        response = await self.send_and_receive(
+            "set_extraction_fan_manual_control_mode True"
         )
+        self.check_response(response, "set_extraction_fan_manual_control_mode")
         self.mock_controller.fan_manual_control.assert_called_once_with(True)
 
     async def test_set_extraction_fan_manual_control_mode_false(self):
         """Test set_extraction_fan_manual_control_mode with argument False."""
-        self.assertEqual(
-            await self.send_and_receive("set_extraction_fan_manual_control_mode False"),
-            "set_extraction_fan_manual_control_mode OK",
+        response = await self.send_and_receive(
+            "set_extraction_fan_manual_control_mode False"
         )
+        self.check_response(response, "set_extraction_fan_manual_control_mode")
         self.mock_controller.fan_manual_control.assert_called_once_with(False)
 
     async def test_start_extraction_fan(self):
         """Test start_extraction_fan command."""
-        self.assertEqual(
-            await self.send_and_receive("start_extraction_fan"),
-            "start_extraction_fan OK",
-        )
+        response = await self.send_and_receive("start_extraction_fan")
+        self.check_response(response, "start_extraction_fan")
         self.mock_controller.start_fan.assert_called_once_with()
 
     async def test_stop_extraction_fan(self):
         """Test stop_extraction_fan command."""
-        self.assertEqual(
-            await self.send_and_receive("stop_extraction_fan"), "stop_extraction_fan OK"
-        )
+        response = await self.send_and_receive("stop_extraction_fan")
+        self.check_response(response, "stop_extraction_fan")
         self.mock_controller.stop_fan.assert_called_once_with()
 
     async def test_badcommand(self):
         """Test with an invalid command."""
-        self.assertEqual(
-            await self.send_and_receive("thisisnotacommand"),
-            "thisisnotacommand raise NotImplementedError()",
-        )
+        response = await self.send_and_receive("thisisnotacommand")
+        self.check_response(response, "thisisnotacommand", "NotImplementedError")
 
     async def test_wrongargumenttype(self):
         """Test with incorrect argument types."""
         response = await self.send_and_receive("close_vent_gate 0.5")
-        self.assertTrue("close_vent_gate raise ValueError(" in response)
+        self.check_response(response, "close_vent_gate", "ValueError")
 
     async def test_wrongargumentcount(self):
         """Test for incorrect number of arguments."""
         response = await self.send_and_receive("close_vent_gate")
-        self.assertEqual(
-            response,
-            "close_vent_gate raise TypeError('close_vent_gate expected 1 arguments')",
-        )
+        self.check_response(response, "close_vent_gate", "TypeError")
 
         response = await self.send_and_receive("open_vent_gate 1 2 3")
-        self.assertEqual(
-            response,
-            "open_vent_gate raise TypeError('open_vent_gate expected 1 arguments')",
-        )
+        self.check_response(response, "open_vent_gate", "TypeError")
 
         response = await self.send_and_receive("ping 3.14159")
-        self.assertEqual(response, "ping raise TypeError('ping expected 0 arguments')")
+        self.check_response(response, "ping", "TypeError")
