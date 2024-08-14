@@ -22,11 +22,17 @@
 import logging
 from enum import IntEnum
 
-import megaind
+try:
+    import megaind
+
+    MEGAIND_AVAILABLE = True
+except ImportError:
+    MEGAIND_AVAILABLE = False
 import pymodbus.client
 
 from . import vf_drive
 from .config import Config
+from .simulate import DomeVentsSimulator
 
 __all__ = ["Controller"]
 
@@ -45,10 +51,12 @@ class Controller:
     https://confluence.lsstcorp.org/display/~fritzm/Auxtel+Vent+Gate+Automation.
     """
 
-    def __init__(self, config: Config = Config()):
+    def __init__(self, config: Config = Config(), simulate: bool = False):
         self.cfg = config
         self.default_fan_frequency = self.cfg.max_freq
         self.log = logging.getLogger(type(self).__name__)
+        self.simulate = simulate
+        self.simulator = DomeVentsSimulator(self.cfg) if simulate else None
 
     async def connect(self) -> None:
         """Connects to the variable frequency drive via modbus.
@@ -58,10 +66,22 @@ class Controller:
         ModbusException
             If the variable frequency drive is not available.
         """
+        if self.simulate:
+            await self.simulator.start()
+
         self.vfd_client = pymodbus.client.AsyncModbusTcpClient(
             self.cfg.hostname, port=self.cfg.port
         )
         await self.vfd_client.connect()
+
+    async def stop(self) -> None:
+        """Disconnects from the variable frequency drive, and stops
+        the simulator if simulating.
+        """
+        if self.simulate:
+            await self.simulator.stop()
+
+        self.vfd_client.close()
 
     async def get_fan_manual_control(self) -> bool:
         """Returns the variable frequency drive setting for manual
@@ -246,6 +266,10 @@ class Controller:
 
         Raises
         ------
+        ModuleNotFoundError
+            If the megaind module has not been installed, in which case the
+            daughterboard cannot be controlled.
+
         ValueError
             If vent_number is invalid.
 
@@ -258,7 +282,7 @@ class Controller:
             raise ValueError(f"Invalid {vent_number=} should be between 0 and 3")
         if self.cfg.vent_signal_ch[vent_number] == -1:
             raise ValueError(f"Vent {vent_number=} is not configured.")
-        megaind.setOd(self.cfg.megaind_stack, self.cfg.vent_signal_ch[vent_number], 1)
+        self.setOd(self.cfg.megaind_stack, self.cfg.vent_signal_ch[vent_number], 1)
 
     def vent_close(self, vent_number: int) -> None:
         """Closes the specified vent.
@@ -270,6 +294,10 @@ class Controller:
 
         Raises
         ------
+        ModuleNotFoundError
+            If the megaind module has not been installed, in which case the
+            daughterboard cannot be controlled.
+
         ValueError
             If vent_number is invalid.
 
@@ -282,7 +310,7 @@ class Controller:
             raise ValueError(f"Invalid {vent_number=} should be between 0 and 3")
         if self.cfg.vent_signal_ch[vent_number] == -1:
             raise ValueError(f"Vent {vent_number=} is not configured.")
-        megaind.setOd(self.cfg.megaind_stack, self.cfg.vent_signal_ch[vent_number], 0)
+        self.setOd(self.cfg.megaind_stack, self.cfg.vent_signal_ch[vent_number], 0)
 
     def vent_state(self, vent_number: int) -> VentGateState:
         """Returns the state of the specified vent.
@@ -294,6 +322,10 @@ class Controller:
 
         Raises
         ------
+        ModuleNotFoundError
+            If the megaind module has not been installed, in which case the
+            daughterboard cannot be controlled.
+
         ValueError
             If vent_number is invalid.
 
@@ -311,10 +343,10 @@ class Controller:
         ):
             raise ValueError(f"Vent {vent_number=} is not configured.")
 
-        op_state = megaind.getOptoCh(
+        op_state = self.getOptoCh(
             self.cfg.megaind_stack, self.cfg.vent_open_limit_ch[vent_number]
         )
-        cl_state = megaind.getOptoCh(
+        cl_state = self.getOptoCh(
             self.cfg.megaind_stack, self.cfg.vent_close_limit_ch[vent_number]
         )
 
@@ -327,3 +359,40 @@ class Controller:
                 return VentGateState.CLOSED
             case _:
                 return VentGateState.FAULT
+
+    def getOptoCh(self, *args, **kwargs) -> int:
+        """Calls megaind.getOptoCh or a simulated getOptoCh depending
+        whether the class was instantiated with simulate = True.
+
+        Raises
+        ------
+        ModuleNotFoundError
+            If the megaind module has not been installed, in which case the
+            daughterboard cannot be controlled.
+        """
+
+        if self.simulate:
+            return self.simulator.getOptoCh(*args, **kwargs)
+        else:
+            if not MEGAIND_AVAILABLE:
+                raise ModuleNotFoundError("The megaind module is not available.")
+            return megaind.getOptoCh(*args, **kwargs)
+
+    def setOd(self, *args, **kwargs) -> None:
+        """Calls megaind.setOd or a simulated setOd depending
+        whether the class was instantiated with simulate = True.
+
+        Raises
+        ------
+        ModuleNotFoundError
+            If the megaind module has not been installed, in which case the
+            daughterboard cannot be controlled.
+        """
+
+        if self.simulate:
+            print(f"{args=}")
+            self.simulator.setOd(*args, **kwargs)
+        else:
+            if not MEGAIND_AVAILABLE:
+                raise ModuleNotFoundError("The megaind module is not available.")
+            megaind.setOd(*args, **kwargs)
