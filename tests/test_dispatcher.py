@@ -23,7 +23,7 @@ import asyncio
 import json
 import logging
 import unittest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 from lsst.ts import tcpip
 from lsst.ts.vent.controller import Dispatcher
@@ -102,15 +102,27 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
 
     async def test_close_vent_gate(self):
         """Test close_vent_gate command."""
-        response = await self.send_and_receive("close_vent_gate 123")
+        response = await self.send_and_receive("close_vent_gate 1 -1 -1 -1")
         self.check_response(response, "close_vent_gate")
-        self.mock_controller.vent_close.assert_called_once_with(123)
+        self.mock_controller.vent_close.assert_called_once_with(1)
 
     async def test_open_vent_gate(self):
         """Test open_vent_gate command."""
-        response = await self.send_and_receive("open_vent_gate 234")
+        response = await self.send_and_receive("open_vent_gate 2 -1 -1 -1")
         self.check_response(response, "open_vent_gate")
-        self.mock_controller.vent_open.assert_called_once_with(234)
+        self.mock_controller.vent_open.assert_called_once_with(2)
+
+    async def test_close_vent_multiple(self):
+        """Test close_vent_gate command sending it multiple gates."""
+        response = await self.send_and_receive("close_vent_gate 1 2 3 -1")
+        self.check_response(response, "close_vent_gate")
+        self.mock_controller.vent_close.assert_has_calls([call(1), call(2), call(3)], any_order=False)
+
+    async def test_open_vent_multiple(self):
+        """Test open_vent_gate command sending it multiple gates."""
+        response = await self.send_and_receive("open_vent_gate -1 1 2 3")
+        self.check_response(response, "open_vent_gate")
+        self.mock_controller.vent_open.assert_has_calls([call(1), call(2), call(3)], any_order=False)
 
     async def test_reset_extraction_fan_drive(self):
         """Test reset_extraction_fan_drive command."""
@@ -159,7 +171,7 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
 
     async def test_wrongargumenttype(self):
         """Test with incorrect argument types."""
-        response = await self.send_and_receive("close_vent_gate 0.5")
+        response = await self.send_and_receive("close_vent_gate 0.5 0.5 0.5 0.5")
         self.check_response(response, "close_vent_gate", "ValueError")
 
     async def test_wrongargumentcount(self):

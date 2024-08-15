@@ -93,19 +93,19 @@ class TestFull(unittest.IsolatedAsyncioTestCase):
         self.check_response(response, "ping")
 
     async def test_vent_open(self):
-        response = await self.send_and_receive("open_vent_gate 0")
+        response = await self.send_and_receive("open_vent_gate 0 -1 -1 -1")
         self.check_response(response, "open_vent_gate")
         self.assertEqual(self.controller.vent_state(0), VentGateState.OPEN)
 
     async def test_vent_close(self):
-        response = await self.send_and_receive("close_vent_gate 0")
+        response = await self.send_and_receive("close_vent_gate 0 -1 -1 -1")
         self.check_response(response, "close_vent_gate")
         self.assertEqual(self.controller.vent_state(0), VentGateState.CLOSED)
 
     async def test_invalid_vent(self):
-        response = await self.send_and_receive("open_vent_gate 456")
+        response = await self.send_and_receive("open_vent_gate 456 -1 -1 -1")
         self.check_response(response, "open_vent_gate", "ValueError")
-        response = await self.send_and_receive("close_vent_gate 123")
+        response = await self.send_and_receive("close_vent_gate 123 -1 -1 -1")
         self.check_response(response, "close_vent_gate", "ValueError")
 
     async def test_fan_manual(self):

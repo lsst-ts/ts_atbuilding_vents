@@ -171,11 +171,17 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
         for gate in (gate0, gate1, gate2, gate3):
             if gate >= 0 and gate <= 3:
                 self.controller.vent_close(gate)
+            else:
+                if gate != -1:
+                    raise ValueError(f"Invalid vent ({gate}) must be between 0 and 3.")
 
     async def open_vent_gate(self, gate0: int, gate1: int, gate2: int, gate3: int) -> None:
         for gate in (gate0, gate1, gate2, gate3):
             if gate >= 0 and gate <= 3:
                 self.controller.vent_open(gate)
+            else:
+                if gate != -1:
+                    raise ValueError(f"Invalid vent ({gate}) must be between 0 and 3.")
 
     async def reset_extraction_fan_drive(self) -> None:
         await self.controller.vfd_fault_reset()
