@@ -34,7 +34,6 @@ TCP_TIMEOUT = 1
 
 class TestDispatcher(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        print("TestDispatcher.asyncSetUp")
         self.log = logging.getLogger()
 
         # Mock the controller
@@ -69,7 +68,6 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
         await self.dispatcher.connected_task
 
     async def asyncTearDown(self):
-        print("TestDispatcher.asyncTearDown")
         await self.client.close()
         await self.dispatcher.close()
         self.patcher.stop()
@@ -85,7 +83,6 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
     def check_response(
         self, response: str, expected_command: str, expected_error: str | None = None
     ) -> dict:
-        print(f"{response=}")
         json_data = json.loads(response)
         self.assertEqual(json_data["command"], expected_command)
         if expected_error is None:

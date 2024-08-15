@@ -390,7 +390,6 @@ class Controller:
         """
 
         if self.simulate:
-            print(f"{args=}")
             self.simulator.setOd(*args, **kwargs)
         else:
             if not MEGAIND_AVAILABLE:

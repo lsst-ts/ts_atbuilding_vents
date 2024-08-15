@@ -192,7 +192,6 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
     async def set_extraction_fan_manual_control_mode(
         self, enable_manual_control_mode: bool
     ) -> None:
-        print(f"{enable_manual_control_mode=}")
         await self.controller.fan_manual_control(enable_manual_control_mode)
 
     async def start_extraction_fan(self) -> None:

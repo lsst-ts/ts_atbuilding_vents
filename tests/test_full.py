@@ -36,7 +36,6 @@ class TestFull(unittest.IsolatedAsyncioTestCase):
     """Identical to the dispatcher test but without mocking."""
 
     async def asyncSetUp(self):
-        print("TestFull.asyncSetUp")
         self.log = logging.getLogger()
 
         # Build the simulation controller and the dispatcher
@@ -61,7 +60,6 @@ class TestFull(unittest.IsolatedAsyncioTestCase):
         await self.dispatcher.connected_task
 
     async def asyncTearDown(self):
-        print("TestFull.asyncTearDown")
         await self.client.close()
         await self.dispatcher.close()
         await self.controller.stop()
@@ -77,7 +75,6 @@ class TestFull(unittest.IsolatedAsyncioTestCase):
     def check_response(
         self, response: str, expected_command: str, expected_error: str | None = None
     ) -> dict:
-        print(f"{response=}")
         json_data = json.loads(response)
         self.assertEqual(json_data["command"], expected_command)
         if expected_error is None:
