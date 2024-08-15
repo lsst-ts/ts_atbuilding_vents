@@ -74,8 +74,8 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
         self, port: int, log: logging.Logger, controller: Controller | None = None
     ):
         self.dispatch_dict = {
-            "close_vent_gate": [int],
-            "open_vent_gate": [int],
+            "close_vent_gate": [int, int, int, int],
+            "open_vent_gate": [int, int, int, int],
             "reset_extraction_fan_drive": [],
             "set_extraction_fan_drive_freq": [float],
             "set_extraction_fan_manual_control_mode": [bool],
@@ -167,11 +167,15 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
                 )
             )
 
-    async def close_vent_gate(self, gate: int) -> None:
-        self.controller.vent_close(gate)
+    async def close_vent_gate(self, gate0: int, gate1: int, gate2: int, gate3: int) -> None:
+        for gate in (gate0, gate1, gate2, gate3):
+            if gate >= 0 and gate <= 3:
+                self.controller.vent_close(gate)
 
-    async def open_vent_gate(self, gate: int) -> None:
-        self.controller.vent_open(gate)
+    async def open_vent_gate(self, gate0: int, gate1: int, gate2: int, gate3: int) -> None:
+        for gate in (gate0, gate1, gate2, gate3):
+            if gate >= 0 and gate <= 3:
+                self.controller.vent_open(gate)
 
     async def reset_extraction_fan_drive(self) -> None:
         await self.controller.vfd_fault_reset()
