@@ -167,7 +167,9 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
                 )
             )
 
-    async def close_vent_gate(self, gate0: int, gate1: int, gate2: int, gate3: int) -> None:
+    async def close_vent_gate(
+        self, gate0: int, gate1: int, gate2: int, gate3: int
+    ) -> None:
         for gate in (gate0, gate1, gate2, gate3):
             if gate >= 0 and gate <= 3:
                 self.controller.vent_close(gate)
@@ -175,7 +177,9 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
                 if gate != -1:
                     raise ValueError(f"Invalid vent ({gate}) must be between 0 and 3.")
 
-    async def open_vent_gate(self, gate0: int, gate1: int, gate2: int, gate3: int) -> None:
+    async def open_vent_gate(
+        self, gate0: int, gate1: int, gate2: int, gate3: int
+    ) -> None:
         for gate in (gate0, gate1, gate2, gate3):
             if gate >= 0 and gate <= 3:
                 self.controller.vent_open(gate)

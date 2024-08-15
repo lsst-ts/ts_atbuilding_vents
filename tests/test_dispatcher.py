@@ -113,13 +113,17 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
         """Test close_vent_gate command sending it multiple gates."""
         response = await self.send_and_receive("close_vent_gate 1 2 3 -1")
         self.check_response(response, "close_vent_gate")
-        self.mock_controller.vent_close.assert_has_calls([call(1), call(2), call(3)], any_order=False)
+        self.mock_controller.vent_close.assert_has_calls(
+            [call(1), call(2), call(3)], any_order=False
+        )
 
     async def test_open_vent_multiple(self):
         """Test open_vent_gate command sending it multiple gates."""
         response = await self.send_and_receive("open_vent_gate -1 1 2 3")
         self.check_response(response, "open_vent_gate")
-        self.mock_controller.vent_open.assert_has_calls([call(1), call(2), call(3)], any_order=False)
+        self.mock_controller.vent_open.assert_has_calls(
+            [call(1), call(2), call(3)], any_order=False
+        )
 
     async def test_reset_extraction_fan_drive(self):
         """Test reset_extraction_fan_drive command."""
