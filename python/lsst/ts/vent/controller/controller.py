@@ -44,6 +44,12 @@ class VentGateState(IntEnum):
     FAULT = -1
 
 
+class FanDriveState(IntEnum):
+    STOPPED = 0
+    OPERATING = 1
+    FAULT = 2
+
+
 class Controller:
     """A controller that commands the components associated with the AT dome
     vents and fans. The code in this class is meant to run on the Raspberry Pi
@@ -233,6 +239,28 @@ class Controller:
             await self.vfd_client.write_register(
                 slave=self.cfg.slave, address=address, value=value
             )
+
+    async def get_drive_state(self) -> FanDriveState:
+        """Returns the current fan drive state based on the contents
+        of the IPAE register.
+
+        Raises
+        ------
+        ModbusException
+            If a communications error occurs.
+        """
+
+        ipae = (
+            await self.vfd_client.read_holding_registers(
+                slave=self.cfg.slave, address=vf_drive.Registers.IPAE_REGISTER
+            )
+        ).registers[0]
+
+        if ipae in (0, 1, 2, 3, 5):
+            return FanDriveState.STOPPED
+        if ipae == 4:
+            return FanDriveState.OPERATING
+        return FanDriveState.FAULT
 
     async def last8faults(self) -> list[tuple[int, str]]:
         """Returns the last eight fault conditions recorded by the drive.

@@ -29,7 +29,7 @@ from lsst.ts import tcpip
 from lsst.ts.vent.controller import Dispatcher
 
 # Standard timeout for TCP/IP messages (sec).
-TCP_TIMEOUT = 1
+TCP_TIMEOUT = 10
 
 
 class TestDispatcher(unittest.IsolatedAsyncioTestCase):
@@ -52,10 +52,16 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
         self.mock_controller.vent_close = MagicMock()
         self.mock_controller.vent_state = MagicMock()
 
+        self.mock_controller.get_fan_manual_control.return_value = False
+        self.mock_controller.get_fan_frequency.return_value = 0.0
+        self.mock_controller.last8faults.return_value = [22] * 8
+        self.mock_controller.vent_state.return_value = 0
+
         # Build the dispatcher and wait for it to listen
         self.dispatcher = Dispatcher(
             port=1234, log=self.log, controller=self.mock_controller
         )
+        self.dispatcher.TELEMETRY_INTERVAL = 5
         await self.dispatcher.start_task
 
         # Connect to the dispatcher
@@ -72,11 +78,25 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
         await self.dispatcher.close()
         self.patcher.stop()
 
-    async def send_and_receive(self, message: str) -> str:
+    async def send_and_receive(
+        self, message: str, pass_event: str | None = None, pass_telemetry: bool = False
+    ) -> str:
         await asyncio.wait_for(
             self.client.write_str(message + "\r\n"), timeout=TCP_TIMEOUT
         )
-        response = await asyncio.wait_for(self.client.read_str(), timeout=TCP_TIMEOUT)
+        for i in range(1000):
+            response = await asyncio.wait_for(
+                self.client.read_str(), timeout=TCP_TIMEOUT
+            )
+            if "evt_" in response:
+                if pass_event is not None and pass_event in response:
+                    break
+            elif "tel_" in response:
+                if pass_telemetry:
+                    break
+            else:
+                break
+
         response = response.strip()
         return response
 
@@ -185,3 +205,38 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
 
         response = await self.send_and_receive("ping 3.14159")
         self.check_response(response, "ping", "TypeError")
+
+    async def test_telemetry(self):
+        """Test that an event is emitted when the gate state changes."""
+        response = await self.send_and_receive("", pass_telemetry=True)
+        self.check_response(response, "telemetry")
+        response = await self.send_and_receive("", pass_telemetry=True)
+        self.check_response(response, "telemetry")
+
+    async def test_gate_event(self):
+        gate_state = [self.mock_controller.vent_state.return_value] * 4
+        response = await self.send_and_receive("", pass_event="evt_vent_gate_state")
+        response_json = json.loads(response)
+        self.assertEqual(response_json["data"], gate_state)
+
+        self.mock_controller.vent_state.return_value = 1
+        gate_state = [self.mock_controller.vent_state.return_value] * 4
+        response = await self.send_and_receive("", pass_event="evt_vent_gate_state")
+        response_json = json.loads(response)
+        self.assertEqual(response_json["data"], gate_state)
+
+    async def test_drive_fault(self):
+        fault_code = self.mock_controller.last8faults.return_value[0]
+        response = await self.send_and_receive(
+            "", pass_event="evt_extraction_fan_drive_fault_code"
+        )
+        response_json = json.loads(response)
+        self.assertEqual(response_json["data"], fault_code)
+
+        fault_code = self.mock_controller.last8faults.return_value = [123] * 8
+        fault_code = self.mock_controller.last8faults.return_value[0]
+        response = await self.send_and_receive(
+            "", pass_event="evt_extraction_fan_drive_fault_code"
+        )
+        response_json = json.loads(response)
+        self.assertEqual(response_json["data"], fault_code)

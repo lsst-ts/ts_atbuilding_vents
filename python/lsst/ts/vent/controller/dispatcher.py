@@ -19,11 +19,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import asyncio
 import json
 import logging
 import traceback
 
-from lsst.ts import tcpip
+from lsst.ts import tcpip, utils
 
 from .controller import Controller
 
@@ -85,7 +86,14 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
         }
         self.controller = controller if controller is not None else Controller()
 
-        super().__init__(port=port, log=log, terminator=b"\r")
+        self.monitor_sleep_task = utils.make_done_future()
+
+        self.telemetry_count = 0
+        self.TELEMETRY_INTERVAL = 100
+
+        super().__init__(
+            port=port, log=log, connect_callback=self.on_connect, terminator=b"\r"
+        )
 
     async def respond(self, message: str) -> None:
         await self.write_str(message + "\r\n")
@@ -206,3 +214,80 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
 
     async def ping(self) -> None:
         pass
+
+    async def on_connect(self, bcs: tcpip.BaseClientOrServer) -> None:
+        if self.connected:
+            self.log.info("Connected to client.")
+            asyncio.create_task(self.monitor_status())
+        else:
+            self.log.info("Disconnected from client.")
+
+    async def monitor_status(self) -> None:
+        vent_state = None
+        last_fault = None
+
+        while self.connected:
+            new_vent_state = [int(self.controller.vent_state(i)) for i in range(4)]
+            last8faults = await self.controller.last8faults()
+            new_last_fault = last8faults[0]
+
+            # Check whether the vent state has changed
+            if vent_state != new_vent_state:
+                self.log.info(f"Vent state changed: {vent_state} -> {new_vent_state}")
+                data = [int(state) for state in new_vent_state]
+                await self.respond(
+                    json.dumps(
+                        dict(
+                            command="evt_vent_gate_state",
+                            error=0,
+                            exception_name="",
+                            message="",
+                            traceback="",
+                            data=data,
+                        )
+                    )
+                )
+                vent_state = new_vent_state
+
+            # Check whether the last fault has changed
+            if last_fault != new_last_fault:
+                self.log.info(f"Last fault changed: {last_fault} -> {new_last_fault}")
+                await self.respond(
+                    json.dumps(
+                        dict(
+                            command="evt_extraction_fan_drive_fault_code",
+                            error=0,
+                            exception_name="",
+                            message="",
+                            traceback="",
+                            data=new_last_fault,
+                        )
+                    )
+                )
+                last_fault = new_last_fault
+
+            # Send telemetry every TELEMETRY_INTERVAL times through the loop
+            self.telemetry_count -= 1
+            if self.telemetry_count < 0:
+                self.telemetry_count = self.TELEMETRY_INTERVAL
+                telemetry = {
+                    "tel_extraction_fan": await self.controller.get_fan_frequency(),
+                }
+                await self.respond(
+                    json.dumps(
+                        dict(
+                            command="telemetry",
+                            error=0,
+                            exception_name="",
+                            message="",
+                            traceback="",
+                            data=telemetry,
+                        )
+                    )
+                )
+
+            try:
+                self.monitor_sleep_task = asyncio.ensure_future(asyncio.sleep(0.1))
+                await self.monitor_sleep_task
+            except asyncio.CancelledError:
+                continue

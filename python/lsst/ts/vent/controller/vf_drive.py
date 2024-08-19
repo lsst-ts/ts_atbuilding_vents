@@ -32,6 +32,7 @@ class Registers(IntEnum):
     CMD_REGISTER = 8501
     LFR_REGISTER = 8502
     LFRD_REGISTER = 8602
+    IPAE_REGISTER = 64277
 
 
 # Manual / auto settings for the variable frequency drive:
