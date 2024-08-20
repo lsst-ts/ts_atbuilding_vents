@@ -20,6 +20,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import os
+import random
 
 from pymodbus.server import ModbusSimulatorServer
 
@@ -31,11 +32,12 @@ class DomeVentsSimulator:
         self.input_bits = [0, 0, 0, 0]
         self.cfg = config
 
+        self.http_port = random.randint(1024, 65535)
         self.modbus_simulator = ModbusSimulatorServer(
             modbus_server="server",
             modbus_device="device",
             http_host="localhost",
-            http_port=25074,
+            http_port=self.http_port,
             json_file=os.path.dirname(__file__) + "/simulator_setup.json",
         )
 

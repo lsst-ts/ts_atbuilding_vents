@@ -63,6 +63,8 @@ class Controller:
         self.log = logging.getLogger(type(self).__name__)
         self.simulate = simulate
         self.simulator = DomeVentsSimulator(self.cfg) if simulate else None
+        self.vfd_client = None
+        self.connected = False
 
     async def connect(self) -> None:
         """Connects to the variable frequency drive via modbus.
@@ -79,6 +81,7 @@ class Controller:
             self.cfg.hostname, port=self.cfg.port
         )
         await self.vfd_client.connect()
+        self.connected = True
 
     async def stop(self) -> None:
         """Disconnects from the variable frequency drive, and stops
@@ -87,7 +90,8 @@ class Controller:
         if self.simulate:
             await self.simulator.stop()
 
-        self.vfd_client.close()
+        if self.vfd_client is not None:
+            self.vfd_client.close()
 
     async def get_fan_manual_control(self) -> bool:
         """Returns the variable frequency drive setting for manual
@@ -109,6 +113,7 @@ class Controller:
         """
 
         self.log.debug("get fan_manual_control")
+        assert self.connected
         settings = tuple(
             [
                 (
@@ -143,6 +148,7 @@ class Controller:
         """
 
         self.log.debug("set vfd_manual_control")
+        assert self.connected
         settings = vf_drive.MANUAL if manual else vf_drive.AUTO
         for address, value in zip(vf_drive.CFG_REGISTERS, settings):
             await self.vfd_client.write_register(
@@ -158,6 +164,7 @@ class Controller:
             If a communications error occurs.
         """
         self.log.debug("start_fan()")
+        assert self.connected
         await self.set_fan_frequency(self.default_fan_frequency)
 
     async def stop_fan(self):
@@ -169,6 +176,7 @@ class Controller:
             If a communications error occurs.
         """
         self.log.debug("stop_fan()")
+        assert self.connected
         await self.set_fan_frequency(0.0)
 
     async def get_fan_frequency(self) -> float:
@@ -181,6 +189,7 @@ class Controller:
         """
 
         self.log.debug("get fan_frequency")
+        assert self.connected
         cmd = (
             await self.vfd_client.read_holding_registers(
                 slave=self.cfg.slave, address=vf_drive.Registers.CMD_REGISTER
@@ -214,6 +223,7 @@ class Controller:
             If a communications error occurs.
         """
         self.log.debug("set fan_frequency")
+        assert self.connected
         if not 0 <= frequency <= self.cfg.max_freq:
             raise ValueError(f"Frequency must be between 0 and {self.cfg.max_freq}")
 
@@ -235,6 +245,7 @@ class Controller:
             If a communications error occurs.
         """
 
+        assert self.connected
         for address, value in vf_drive.FAULT_RESET_SEQUENCE:
             await self.vfd_client.write_register(
                 slave=self.cfg.slave, address=address, value=value
@@ -250,6 +261,7 @@ class Controller:
             If a communications error occurs.
         """
 
+        assert self.connected
         ipae = (
             await self.vfd_client.read_holding_registers(
                 slave=self.cfg.slave, address=vf_drive.Registers.IPAE_REGISTER
@@ -279,6 +291,7 @@ class Controller:
         """
 
         self.log.debug("last8faults")
+        assert self.connected
         rvals = await self.vfd_client.read_holding_registers(
             slave=self.cfg.slave, address=vf_drive.Registers.FAULT_REGISTER, count=8
         )
@@ -306,6 +319,7 @@ class Controller:
         """
 
         self.log.debug(f"vent_open({vent_number})")
+        assert self.connected
         if not 0 <= vent_number <= 3:
             raise ValueError(f"Invalid {vent_number=} should be between 0 and 3")
         if self.cfg.vent_signal_ch[vent_number] == -1:
@@ -334,6 +348,7 @@ class Controller:
         """
 
         self.log.debug(f"vent_close({vent_number})")
+        assert self.connected
         if not 0 <= vent_number <= 3:
             raise ValueError(f"Invalid {vent_number=} should be between 0 and 3")
         if self.cfg.vent_signal_ch[vent_number] == -1:
@@ -362,6 +377,7 @@ class Controller:
         """
 
         self.log.debug(f"vent_state({vent_number})")
+        assert self.connected
         if not 0 <= vent_number <= 3:
             raise ValueError(f"Invalid {vent_number=} should be between 0 and 3")
 
@@ -399,6 +415,7 @@ class Controller:
             daughterboard cannot be controlled.
         """
 
+        assert self.connected
         if self.simulate:
             return self.simulator.getOptoCh(*args, **kwargs)
         else:
@@ -417,6 +434,7 @@ class Controller:
             daughterboard cannot be controlled.
         """
 
+        assert self.connected
         if self.simulate:
             self.simulator.setOd(*args, **kwargs)
         else:
