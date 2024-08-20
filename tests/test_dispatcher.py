@@ -207,13 +207,14 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
         self.check_response(response, "ping", "TypeError")
 
     async def test_telemetry(self):
-        """Test that an event is emitted when the gate state changes."""
+        """Test that telemetry is sent from time to time."""
         response = await self.send_and_receive("", pass_telemetry=True)
         self.check_response(response, "telemetry")
         response = await self.send_and_receive("", pass_telemetry=True)
         self.check_response(response, "telemetry")
 
     async def test_gate_event(self):
+        """Test that an event is emitted when the gate state changes."""
         gate_state = [self.mock_controller.vent_state.return_value] * 4
         response = await self.send_and_receive("", pass_event="evt_vent_gate_state")
         response_json = json.loads(response)
@@ -226,6 +227,7 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response_json["data"], gate_state)
 
     async def test_drive_fault(self):
+        """Test that a drive fault is emitted."""
         fault_code = self.mock_controller.last8faults.return_value[0]
         response = await self.send_and_receive(
             "", pass_event="evt_extraction_fan_drive_fault_code"
