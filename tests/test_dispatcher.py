@@ -27,6 +27,7 @@ from unittest.mock import AsyncMock, MagicMock, call, patch
 
 from lsst.ts import tcpip
 from lsst.ts.vent.controller import Dispatcher
+from lsst.ts.xml.enums.ATBuilding import FanDriveState
 
 # Standard timeout for TCP/IP messages (sec).
 TCP_TIMEOUT = 10
@@ -48,14 +49,18 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
         self.mock_controller.set_fan_frequency = AsyncMock()
         self.mock_controller.vfd_fault_reset = AsyncMock()
         self.mock_controller.last8faults = AsyncMock()
+        self.mock_controller.get_drive_state = AsyncMock()
         self.mock_controller.vent_open = MagicMock()
         self.mock_controller.vent_close = MagicMock()
         self.mock_controller.vent_state = MagicMock()
 
         self.mock_controller.get_fan_manual_control.return_value = False
         self.mock_controller.get_fan_frequency.return_value = 0.0
-        self.mock_controller.last8faults.return_value = [22] * 8
+        self.mock_controller.last8faults.return_value = [
+            (22, "Description of error")
+        ] * 8
         self.mock_controller.vent_state.return_value = 0
+        self.mock_controller.get_drive_state.return_value = FanDriveState.STOPPED
 
         # Build the dispatcher and wait for it to listen
         self.dispatcher = Dispatcher(
@@ -228,15 +233,17 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
 
     async def test_drive_fault(self):
         """Test that a drive fault is emitted."""
-        fault_code = self.mock_controller.last8faults.return_value[0]
+        fault_code = self.mock_controller.last8faults.return_value[0][0]
         response = await self.send_and_receive(
             "", pass_event="evt_extraction_fan_drive_fault_code"
         )
         response_json = json.loads(response)
         self.assertEqual(response_json["data"], fault_code)
 
-        fault_code = self.mock_controller.last8faults.return_value = [123] * 8
-        fault_code = self.mock_controller.last8faults.return_value[0]
+        self.mock_controller.last8faults.return_value = [
+            (123, "Description of error")
+        ] * 8
+        fault_code = self.mock_controller.last8faults.return_value[0][0]
         response = await self.send_and_receive(
             "", pass_event="evt_extraction_fan_drive_fault_code"
         )

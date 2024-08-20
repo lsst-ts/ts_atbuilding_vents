@@ -25,8 +25,8 @@ import logging
 import unittest
 
 from lsst.ts import tcpip
-from lsst.ts.vent.controller import (Config, Controller, Dispatcher,
-                                     VentGateState)
+from lsst.ts.vent.controller import Config, Controller, Dispatcher
+from lsst.ts.xml.enums.ATBuilding import VentGateState
 
 # Standard timeout for TCP/IP messages (sec).
 TCP_TIMEOUT = 1
@@ -64,11 +64,25 @@ class TestFull(unittest.IsolatedAsyncioTestCase):
         await self.dispatcher.close()
         await self.controller.stop()
 
-    async def send_and_receive(self, message: str) -> str:
+    async def send_and_receive(
+        self, message: str, pass_event: str | None = None, pass_telemetry: bool = False
+    ) -> str:
         await asyncio.wait_for(
             self.client.write_str(message + "\r\n"), timeout=TCP_TIMEOUT
         )
-        response = await asyncio.wait_for(self.client.read_str(), timeout=TCP_TIMEOUT)
+        for i in range(1000):
+            response = await asyncio.wait_for(
+                self.client.read_str(), timeout=TCP_TIMEOUT
+            )
+            if "evt_" in response:
+                if pass_event is not None and pass_event in response:
+                    break
+            elif "tel_" in response:
+                if pass_telemetry:
+                    break
+            else:
+                break
+
         response = response.strip()
         return response
 
@@ -92,7 +106,7 @@ class TestFull(unittest.IsolatedAsyncioTestCase):
     async def test_vent_open(self):
         response = await self.send_and_receive("open_vent_gate 0 -1 -1 -1")
         self.check_response(response, "open_vent_gate")
-        self.assertEqual(self.controller.vent_state(0), VentGateState.OPEN)
+        self.assertEqual(self.controller.vent_state(0), VentGateState.OPENED)
 
     async def test_vent_close(self):
         response = await self.send_and_receive("close_vent_gate 0 -1 -1 -1")
