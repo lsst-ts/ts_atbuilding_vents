@@ -34,20 +34,20 @@ from . import vf_drive
 from .config import Config
 from .simulate import DomeVentsSimulator
 
-__all__ = ["Controller"]
+__all__ = ["Controller", "VentGateState"]
 
 
 class VentGateState(IntEnum):
-    CLOSED = 0
-    PARTIALLY_OPEN = 1
-    OPEN = 2
+    CLOSED = 1
+    PARTIALLY_OPEN = 2
+    OPEN = 3
     FAULT = -1
 
 
 class FanDriveState(IntEnum):
-    STOPPED = 0
-    OPERATING = 1
-    FAULT = 2
+    STOPPED = 1
+    OPERATING = 2
+    FAULT = 3
 
 
 class Controller:
@@ -280,7 +280,7 @@ class Controller:
 
         self.log.debug("last8faults")
         rvals = await self.vfd_client.read_holding_registers(
-            slave=1, address=vf_drive.Registers.FAULT_REGISTER, count=8
+            slave=self.cfg.slave, address=vf_drive.Registers.FAULT_REGISTER, count=8
         )
         return [(r, vf_drive.FAULTS[r]) for r in rvals.registers]
 

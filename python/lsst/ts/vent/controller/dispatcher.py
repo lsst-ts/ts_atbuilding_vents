@@ -26,7 +26,7 @@ import traceback
 
 from lsst.ts import tcpip, utils
 
-from .controller import Controller
+from .controller import Controller, VentGateState
 
 
 def _cast_string_to_type(new_type: type, value: str):
@@ -225,11 +225,26 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
     async def monitor_status(self) -> None:
         vent_state = None
         last_fault = None
+        fan_drive_state = None
 
         while self.connected:
-            new_vent_state = [int(self.controller.vent_state(i)) for i in range(4)]
-            last8faults = await self.controller.last8faults()
-            new_last_fault = last8faults[0]
+            try:
+                new_vent_state = [VentGateState.CLOSED] * 4
+                for i in range(4):
+                    try:
+                        new_vent_state[i] = self.controller.vent_state(i)
+                    except ValueError:
+                        # Ignore non-configured vents
+                        pass
+                last8faults = await self.controller.last8faults()
+                new_last_fault = last8faults[0][
+                    0
+                ]  # controller.last8faults returns tuple[int, str]
+
+                new_fan_drive_state = await self.controller.get_drive_state()
+            except Exception as e:
+                self.log.exception(e)
+                # Do not re-raise, so that the loop will continue
 
             # Check whether the vent state has changed
             if vent_state != new_vent_state:
@@ -265,6 +280,25 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
                     )
                 )
                 last_fault = new_last_fault
+
+            # Check whether the fan drive state has changed
+            if fan_drive_state != new_fan_drive_state:
+                self.log.debug(
+                    f"Fan drive state changed: {fan_drive_state} -> {new_fan_drive_state}"
+                )
+                await self.respond(
+                    json.dumps(
+                        dict(
+                            command="evt_extraction_fan_drive_state",
+                            error=0,
+                            exception_name="",
+                            message="",
+                            traceback="",
+                            data=new_fan_drive_state,
+                        )
+                    )
+                )
+                fan_drive_state = new_fan_drive_state
 
             # Send telemetry every TELEMETRY_INTERVAL times through the loop
             self.telemetry_count -= 1
