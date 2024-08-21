@@ -51,9 +51,13 @@ def _cast_string_to_type(new_type: type, value: str):
     if new_type is bool:  # Boolean is a special case
         if value.lower() in ("true", "t", "1"):
             return True
-        if value.lower() in ("false", "f", "0"):
+        elif value.lower() in ("false", "f", "0"):
             return False
-        raise ValueError(f"Expected bool value but got {value}")
+        raise ValueError(
+            "Expected bool value "
+            + "('true', 't', '1', 'false', 'f', '0')"
+            + " but got {value}"
+        )
     return new_type(value)
 
 

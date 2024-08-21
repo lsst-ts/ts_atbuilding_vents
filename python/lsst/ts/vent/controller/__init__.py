@@ -27,5 +27,3 @@ except ImportError:
 from .config import Config
 from .controller import Controller
 from .dispatcher import Dispatcher
-
-__all__ = ["__version__", "Config", "Controller", "Dispatcher"]

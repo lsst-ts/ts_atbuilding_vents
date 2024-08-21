@@ -47,7 +47,7 @@ class DomeVentsSimulator:
     async def stop(self):
         await self.modbus_simulator.stop()
 
-    def getOptoCh(self, stack: int, channel: int) -> int:
+    def get_opto_ch(self, stack: int, channel: int) -> int:
         """Simulates the behavior of megaind.getOptoCh, as if connected
         to dome vents configured as described in config.py.
 
@@ -68,7 +68,7 @@ class DomeVentsSimulator:
         assert 0 <= channel <= 3
         return self.input_bits[channel]
 
-    def setOd(self, stack: int, channel: int, val: int) -> None:
+    def set_od(self, stack: int, channel: int, val: int) -> None:
         """Simulates the behavior of megaind.setOd, as if connected
         to dome vents configured as described in config.py.
 
