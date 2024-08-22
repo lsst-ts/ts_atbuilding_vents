@@ -22,14 +22,7 @@
 import logging
 
 from lsst.ts.xml.enums.ATBuilding import FanDriveState, VentGateState
-
-try:
-    import megaind
-
-    MEGAIND_AVAILABLE = True
-except ImportError:
-    MEGAIND_AVAILABLE = False
-import pymodbus.client
+from pymodbus.client import AsyncModbusTcpClient
 
 from . import vf_drive
 from .config import Config
@@ -64,7 +57,7 @@ class Controller:
         if self.simulator is not None:
             await self.simulator.start()
 
-        self.vfd_client = pymodbus.client.AsyncModbusTcpClient(
+        self.vfd_client = AsyncModbusTcpClient(
             self.config.hostname, port=self.config.port
         )
         await self.vfd_client.connect()
@@ -342,10 +335,6 @@ class Controller:
         AssertionError
             If the controller is not connected.
 
-        ModuleNotFoundError
-            If the megaind module has not been installed, in which case the
-            daughterboard cannot be controlled.
-
         ValueError
             If vent_number is invalid.
 
@@ -376,10 +365,6 @@ class Controller:
         AssertionError
             If the controller is not connected.
 
-        ModuleNotFoundError
-            If the megaind module has not been installed, in which case the
-            daughterboard cannot be controlled.
-
         ValueError
             If vent_number is invalid.
 
@@ -409,10 +394,6 @@ class Controller:
         ------
         AssertionError
             If the controller is not connected.
-
-        ModuleNotFoundError
-            If the megaind module has not been installed, in which case the
-            daughterboard cannot be controlled.
 
         ValueError
             If vent_number is invalid.
@@ -450,7 +431,7 @@ class Controller:
                 return VentGateState.FAULT
 
     def get_opto_ch(self, *args, **kwargs) -> int:
-        """Calls megaind.getOptoCh or a simulated getOptoCh depending
+        """Calls hardware I/O or a simulated substitute depending
         whether the class was instantiated with simulate = True.
 
         Raises
@@ -458,21 +439,18 @@ class Controller:
         AssertionError
             If the controller is not connected.
 
-        ModuleNotFoundError
-            If the megaind module has not been installed, in which case the
-            daughterboard cannot be controlled.
+        NotImplementedError
+            If we are not in simulation mode.
         """
 
         assert self.connected
         if self.simulator is not None:
             return self.simulator.get_opto_ch(*args, **kwargs)
         else:
-            if not MEGAIND_AVAILABLE:
-                raise ModuleNotFoundError("The megaind module is not available.")
-            return megaind.getOptoCh(*args, **kwargs)
+            raise NotImplementedError("Sequent hardware not implemented.")
 
     def set_od(self, *args, **kwargs) -> None:
-        """Calls megaind.setOd or a simulated setOd depending
+        """Calls harware I/O or a simulated substitute depending
         whether the class was instantiated with simulate = True.
 
         Raises
@@ -480,15 +458,12 @@ class Controller:
         AssertionError
             If the controller is not connected.
 
-        ModuleNotFoundError
-            If the megaind module has not been installed, in which case the
-            daughterboard cannot be controlled.
+        NotImplementedError
+            If we are not in simulation mode.
         """
 
         assert self.connected
         if self.simulator is not None:
             self.simulator.set_od(*args, **kwargs)
         else:
-            if not MEGAIND_AVAILABLE:
-                raise ModuleNotFoundError("The megaind module is not available.")
-            megaind.setOd(*args, **kwargs)
+            raise NotImplementedError("Sequent hardware not implemented.")
