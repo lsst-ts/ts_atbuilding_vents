@@ -29,7 +29,7 @@ from lsst.ts import tcpip, utils
 from .controller import Controller, VentGateState
 
 
-def _cast_string_to_type(new_type: type, value: str):
+def cast_string_to_type(new_type: type, value: str):
     """Converts the value string to the specified type. In the case of boolean,
     "True" or "T" or "1" is ``True`` and everything else is ``False``. Other
     cases are handled by cast.
@@ -150,7 +150,7 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
 
         try:
             # Convert the arguments to their expected type.
-            args = [_cast_string_to_type(t, arg) for t, arg in zip(types, args)]
+            args = [cast_string_to_type(t, arg) for t, arg in zip(types, args)]
             # Call the method with the specified arguments.
             await getattr(self, command)(*args)
             # Send back a success response.

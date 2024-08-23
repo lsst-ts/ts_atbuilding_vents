@@ -26,4 +26,4 @@ except ImportError:
 
 from .config import Config
 from .controller import Controller
-from .dispatcher import Dispatcher
+from .dispatcher import Dispatcher, cast_string_to_type
