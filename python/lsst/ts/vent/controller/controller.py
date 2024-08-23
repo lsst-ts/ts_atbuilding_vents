@@ -20,22 +20,15 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import logging
-from enum import IntEnum
 
-import megaind
-import pymodbus.client
+from lsst.ts.xml.enums.ATBuilding import FanDriveState, VentGateState
+from pymodbus.client import AsyncModbusTcpClient
 
 from . import vf_drive
 from .config import Config
+from .dome_vents_simulator import DomeVentsSimulator
 
 __all__ = ["Controller"]
-
-
-class VentGateState(IntEnum):
-    CLOSED = 0
-    PARTIALLY_OPEN = 1
-    OPEN = 2
-    FAULT = -1
 
 
 class Controller:
@@ -45,10 +38,13 @@ class Controller:
     https://confluence.lsstcorp.org/display/~fritzm/Auxtel+Vent+Gate+Automation.
     """
 
-    def __init__(self, config: Config = Config()):
-        self.cfg = config
-        self.default_fan_frequency = self.cfg.max_freq
+    def __init__(self, config: Config | None = None, simulate: bool = False):
+        self.config = config if config is not None else Config()
+        self.default_fan_frequency = self.config.max_freq
         self.log = logging.getLogger(type(self).__name__)
+        self.simulator = DomeVentsSimulator(self.config) if simulate else None
+        self.vfd_client = None
+        self.connected = False
 
     async def connect(self) -> None:
         """Connects to the variable frequency drive via modbus.
@@ -58,10 +54,24 @@ class Controller:
         ModbusException
             If the variable frequency drive is not available.
         """
-        self.vfd_client = pymodbus.client.AsyncModbusTcpClient(
-            self.cfg.hostname, port=self.cfg.port
+        if self.simulator is not None:
+            await self.simulator.start()
+
+        self.vfd_client = AsyncModbusTcpClient(
+            self.config.hostname, port=self.config.port
         )
         await self.vfd_client.connect()
+        self.connected = True
+
+    async def stop(self) -> None:
+        """Disconnects from the variable frequency drive, and stops
+        the simulator if simulating.
+        """
+        if self.simulator is not None:
+            await self.simulator.stop()
+
+        if self.vfd_client is not None:
+            self.vfd_client.close()
 
     async def get_fan_manual_control(self) -> bool:
         """Returns the variable frequency drive setting for manual
@@ -75,6 +85,9 @@ class Controller:
 
         Raises
         ------
+        AssertionError
+            If the controller is not connected.
+
         ValueError
             If the drive settings don't match either profile.
 
@@ -83,11 +96,12 @@ class Controller:
         """
 
         self.log.debug("get fan_manual_control")
+        assert self.connected
         settings = tuple(
             [
                 (
                     await self.vfd_client.read_holding_registers(
-                        slave=self.cfg.slave, address=addr
+                        slave=self.config.device_id, address=addr
                     )
                 ).registers[0]
                 for addr in vf_drive.CFG_REGISTERS
@@ -112,15 +126,19 @@ class Controller:
 
         Raises
         ------
+        AssertionError
+            If the controller is not connected.
+
         ModbusException
             If a communications error occurs.
         """
 
         self.log.debug("set vfd_manual_control")
+        assert self.connected
         settings = vf_drive.MANUAL if manual else vf_drive.AUTO
         for address, value in zip(vf_drive.CFG_REGISTERS, settings):
             await self.vfd_client.write_register(
-                slave=self.cfg.slave, address=address, value=value
+                slave=self.config.device_id, address=address, value=value
             )
 
     async def start_fan(self):
@@ -128,10 +146,14 @@ class Controller:
 
         Raises
         ------
+        AssertionError
+            If the controller is not connected.
+
         ModbusException
             If a communications error occurs.
         """
         self.log.debug("start_fan()")
+        assert self.connected
         await self.set_fan_frequency(self.default_fan_frequency)
 
     async def stop_fan(self):
@@ -139,10 +161,14 @@ class Controller:
 
         Raises
         ------
+        AssertionError
+            If the controller is not connected.
+
         ModbusException
             If a communications error occurs.
         """
         self.log.debug("stop_fan()")
+        assert self.connected
         await self.set_fan_frequency(0.0)
 
     async def get_fan_frequency(self) -> float:
@@ -150,14 +176,18 @@ class Controller:
 
         Raises
         ------
+        AssertionError
+            If the controller is not connected.
+
         ModbusException
             If a communications error occurs.
         """
 
         self.log.debug("get fan_frequency")
+        assert self.connected
         cmd = (
             await self.vfd_client.read_holding_registers(
-                slave=self.cfg.slave, address=vf_drive.Registers.CMD_REGISTER
+                slave=self.config.device_id, address=vf_drive.Registers.CMD_REGISTER
             )
         ).registers[0]
         if cmd == 0:
@@ -165,7 +195,7 @@ class Controller:
 
         lfr = (
             await self.vfd_client.read_holding_registers(
-                slave=self.cfg.slave, address=vf_drive.Registers.LFR_REGISTER
+                slave=self.config.device_id, address=vf_drive.Registers.LFR_REGISTER
             )
         ).registers[0]
         return 0.1 * lfr
@@ -181,6 +211,9 @@ class Controller:
 
         Raises
         ------
+        AssertionError
+            If the controller is not connected.
+
         ValueError
             If the frequency is not between zero and MAX_FREQ.
 
@@ -188,8 +221,9 @@ class Controller:
             If a communications error occurs.
         """
         self.log.debug("set fan_frequency")
-        if not 0 <= frequency <= self.cfg.max_freq:
-            raise ValueError(f"Frequency must be between 0 and {self.cfg.max_freq}")
+        assert self.connected
+        if not 0 <= frequency <= self.config.max_freq:
+            raise ValueError(f"Frequency must be between 0 and {self.config.max_freq}")
 
         settings = {
             vf_drive.Registers.CMD_REGISTER: 0 if frequency == 0.0 else 1,
@@ -197,7 +231,7 @@ class Controller:
         }
         for address, value in settings.items():
             await self.vfd_client.write_register(
-                slave=self.cfg.slave, address=address, value=value
+                slave=self.config.device_id, address=address, value=value
             )
 
     async def vfd_fault_reset(self) -> None:
@@ -205,14 +239,60 @@ class Controller:
 
         Raises
         ------
+        AssertionError
+            If the controller is not connected.
+
         ModbusException
             If a communications error occurs.
         """
 
+        assert self.connected
         for address, value in vf_drive.FAULT_RESET_SEQUENCE:
             await self.vfd_client.write_register(
-                slave=self.cfg.slave, address=address, value=value
+                slave=self.config.device_id, address=address, value=value
             )
+
+    async def get_drive_state(self) -> FanDriveState:
+        """Returns the current fan drive state based on the contents
+        of the IPAE register (described as "IPar Status" in the Schneider
+        Electric ATV320 manual). The IPAE register can have the following
+        values:
+         * 0 [Idle State] (IDLE) - Idle State
+         * 1 [Init] (INIT) - Init
+         * 2 [Configuration] (CONF) - Configuration
+         * 3 [Ready] (RDY) - Ready
+         * 4 [Operational] (OPE) - Operational
+         * 5 [Not Configured] (UCFG) - Not Configured
+         * 6 [Unrecoverable Error] (UREC) - Unrecoverable error
+
+        Raises
+        ------
+        AssertionError
+            If the controller is not connected.
+
+        ModbusException
+            If a communications error occurs.
+
+        Returns
+        -------
+        `FanDriveState`
+            The current fan drive state based on the contents of the
+            IPAE register (described as "IPar Status" in the Schneider
+            Electric ATV320 manual).
+        """
+
+        assert self.connected
+        ipae = (
+            await self.vfd_client.read_holding_registers(
+                slave=self.config.device_id, address=vf_drive.Registers.IPAE_REGISTER
+            )
+        ).registers[0]
+
+        if ipae in (0, 1, 2, 3, 5):
+            return FanDriveState.STOPPED
+        if ipae == 4:
+            return FanDriveState.OPERATING
+        return FanDriveState.FAULT
 
     async def last8faults(self) -> list[tuple[int, str]]:
         """Returns the last eight fault conditions recorded by the drive.
@@ -226,13 +306,19 @@ class Controller:
 
         Raises
         ------
+        AssertionError
+            If the controller is not connected.
+
         ModbusException
             If a communications error occurs.
         """
 
         self.log.debug("last8faults")
+        assert self.connected
         rvals = await self.vfd_client.read_holding_registers(
-            slave=1, address=vf_drive.Registers.FAULT_REGISTER, count=8
+            slave=self.config.device_id,
+            address=vf_drive.Registers.FAULT_REGISTER,
+            count=8,
         )
         return [(r, vf_drive.FAULTS[r]) for r in rvals.registers]
 
@@ -246,6 +332,9 @@ class Controller:
 
         Raises
         ------
+        AssertionError
+            If the controller is not connected.
+
         ValueError
             If vent_number is invalid.
 
@@ -254,11 +343,14 @@ class Controller:
         """
 
         self.log.debug(f"vent_open({vent_number})")
+        assert self.connected
         if not 0 <= vent_number <= 3:
             raise ValueError(f"Invalid {vent_number=} should be between 0 and 3")
-        if self.cfg.vent_signal_ch[vent_number] == -1:
+        if self.config.vent_signal_ch[vent_number] == -1:
             raise ValueError(f"Vent {vent_number=} is not configured.")
-        megaind.setOd(self.cfg.megaind_stack, self.cfg.vent_signal_ch[vent_number], 1)
+        self.set_od(
+            self.config.megaind_stack, self.config.vent_signal_ch[vent_number], 1
+        )
 
     def vent_close(self, vent_number: int) -> None:
         """Closes the specified vent.
@@ -270,6 +362,9 @@ class Controller:
 
         Raises
         ------
+        AssertionError
+            If the controller is not connected.
+
         ValueError
             If vent_number is invalid.
 
@@ -278,11 +373,14 @@ class Controller:
         """
 
         self.log.debug(f"vent_close({vent_number})")
+        assert self.connected
         if not 0 <= vent_number <= 3:
             raise ValueError(f"Invalid {vent_number=} should be between 0 and 3")
-        if self.cfg.vent_signal_ch[vent_number] == -1:
+        if self.config.vent_signal_ch[vent_number] == -1:
             raise ValueError(f"Vent {vent_number=} is not configured.")
-        megaind.setOd(self.cfg.megaind_stack, self.cfg.vent_signal_ch[vent_number], 0)
+        self.set_od(
+            self.config.megaind_stack, self.config.vent_signal_ch[vent_number], 0
+        )
 
     def vent_state(self, vent_number: int) -> VentGateState:
         """Returns the state of the specified vent.
@@ -294,6 +392,9 @@ class Controller:
 
         Raises
         ------
+        AssertionError
+            If the controller is not connected.
+
         ValueError
             If vent_number is invalid.
 
@@ -302,28 +403,92 @@ class Controller:
         """
 
         self.log.debug(f"vent_state({vent_number})")
+        assert self.connected
         if not 0 <= vent_number <= 3:
             raise ValueError(f"Invalid {vent_number=} should be between 0 and 3")
 
         if (
-            self.cfg.vent_open_limit_ch[vent_number] == -1
-            or self.cfg.vent_close_limit_ch[vent_number] == -1
+            self.config.vent_open_limit_ch[vent_number] == -1
+            or self.config.vent_close_limit_ch[vent_number] == -1
         ):
             raise ValueError(f"Vent {vent_number=} is not configured.")
 
-        op_state = megaind.getOptoCh(
-            self.cfg.megaind_stack, self.cfg.vent_open_limit_ch[vent_number]
+        op_state = self.get_opto_ch(
+            self.config.megaind_stack, self.config.vent_open_limit_ch[vent_number]
         )
-        cl_state = megaind.getOptoCh(
-            self.cfg.megaind_stack, self.cfg.vent_close_limit_ch[vent_number]
+        cl_state = self.get_opto_ch(
+            self.config.megaind_stack, self.config.vent_close_limit_ch[vent_number]
         )
 
         match op_state, cl_state:
             case 1, 0:
-                return VentGateState.OPEN
+                return VentGateState.OPENED
             case 0, 0:
                 return VentGateState.PARTIALLY_OPEN
             case 0, 1:
                 return VentGateState.CLOSED
             case _:
                 return VentGateState.FAULT
+
+    def get_opto_ch(self, stack_number: int, channel_number: int) -> int:
+        """Calls hardware I/O or a simulated substitute depending
+        whether the class was instantiated with simulate = True.
+
+        Parameters
+        ----------
+        stack_number: int
+            The hardware stack number for the I/O card.
+
+        channel_number: int
+            The I/O channel number to read.
+
+        Returns
+        -------
+        int
+            If the I/O input channel is high, returns 1, or,
+            if the I/O input channel is low, returns 0.
+
+        Raises
+        ------
+        AssertionError
+            If the controller is not connected.
+
+        NotImplementedError
+            If we are not in simulation mode.
+        """
+
+        assert self.connected
+        if self.simulator is not None:
+            return self.simulator.get_opto_ch(stack_number, channel_number)
+        else:
+            raise NotImplementedError("Sequent hardware not implemented.")
+
+    def set_od(self, stack_number: int, channel_number: int, value: int) -> None:
+        """Calls harware I/O or a simulated substitute depending
+        whether the class was instantiated with simulate = True.
+
+        Parameters
+        ----------
+        stack_number : int
+            The hardware stack number for the I/O card.
+
+        channel_number: int
+            The I/O channel number to write.
+
+        value: int
+            The value to send to the I/O output, 1 for high or 0 for low.
+
+        Raises
+        ------
+        AssertionError
+            If the controller is not connected.
+
+        NotImplementedError
+            If we are not in simulation mode.
+        """
+
+        assert self.connected
+        if self.simulator is not None:
+            self.simulator.set_od(stack_number, channel_number, value)
+        else:
+            raise NotImplementedError("Sequent hardware not implemented.")

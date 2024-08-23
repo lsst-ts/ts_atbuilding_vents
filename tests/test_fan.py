@@ -19,35 +19,22 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import asyncio
-import os
 import unittest
 
 from lsst.ts.vent.controller import Config, Controller
-from pymodbus.server import ModbusSimulatorServer
 
 
 class TestFan(unittest.IsolatedAsyncioTestCase):
 
     async def asyncSetUp(self):
-        self.loop = asyncio.new_event_loop()
-        self.simulator = ModbusSimulatorServer(
-            modbus_server="server",
-            modbus_device="device",
-            http_host="localhost",
-            http_port=25074,
-            json_file=os.path.dirname(__file__) + "/setup.json",
-        )
-        await self.simulator.run_forever(only_start=True)
-
         cfg = Config()
         cfg.hostname = "localhost"
         cfg.port = 26034
-        self.controller = Controller(cfg)
+        self.controller = Controller(cfg, simulate=True)
         await self.controller.connect()
 
     async def asyncTearDown(self):
-        await self.simulator.stop()
+        await self.controller.stop()
 
     async def test_fan_manual(self):
         self.assertTrue(

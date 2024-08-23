@@ -1,13 +1,38 @@
+# This file is part of ts_atbuilding_vents
+#
+# Developed for the LSST Data Management System.
+# This product includes software developed by the LSST Project
+# (https://www.lsst.org).
+# See the COPYRIGHT file at the top-level directory of this distribution
+# for details of code ownership.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+import asyncio
 import json
 import logging
 import traceback
+from typing import Type, TypeVar
 
-from lsst.ts import tcpip
+from lsst.ts import tcpip, utils
 
-from .controller import Controller
+from .controller import Controller, VentGateState
+
+T = TypeVar("T", bool, int, float, str)
 
 
-def _cast_string_to_type(new_type: type, value: str):
+def cast_string_to_type(new_type: Type[T], value: str) -> T:
     """Converts the value string to the specified type. In the case of boolean,
     "True" or "T" or "1" is ``True`` and everything else is ``False``. Other
     cases are handled by cast.
@@ -20,6 +45,11 @@ def _cast_string_to_type(new_type: type, value: str):
     value: str
         The value to be converted.
 
+    Returns
+    -------
+    T
+        The value represented in the string, converted to the specfied type.
+
     Raises
     ------
     ValueError
@@ -27,7 +57,15 @@ def _cast_string_to_type(new_type: type, value: str):
     """
 
     if new_type is bool:  # Boolean is a special case
-        return value.lower() in ("true", "t", "1")
+        if value.lower() in ("true", "t", "1"):
+            return True
+        elif value.lower() in ("false", "f", "0"):
+            return False
+        raise ValueError(
+            "Expected bool value "
+            + "('true', 't', '1', 'false', 'f', '0')"
+            + " but got {value}"
+        )
     return new_type(value)
 
 
@@ -49,8 +87,8 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
         self, port: int, log: logging.Logger, controller: Controller | None = None
     ):
         self.dispatch_dict = {
-            "close_vent_gate": [int],
-            "open_vent_gate": [int],
+            "close_vent_gate": [int, int, int, int],
+            "open_vent_gate": [int, int, int, int],
             "reset_extraction_fan_drive": [],
             "set_extraction_fan_drive_freq": [float],
             "set_extraction_fan_manual_control_mode": [bool],
@@ -60,7 +98,14 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
         }
         self.controller = controller if controller is not None else Controller()
 
-        super().__init__(port=port, log=log, terminator=b"\r")
+        self.monitor_sleep_task = utils.make_done_future()
+
+        self.telemetry_count = 0
+        self.TELEMETRY_INTERVAL = 100
+
+        super().__init__(
+            port=port, log=log, connect_callback=self.on_connect, terminator=b"\r"
+        )
 
     async def respond(self, message: str) -> None:
         await self.write_str(message + "\r\n")
@@ -113,7 +158,7 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
 
         try:
             # Convert the arguments to their expected type.
-            args = [_cast_string_to_type(t, arg) for t, arg in zip(types, args)]
+            args = [cast_string_to_type(t, arg) for t, arg in zip(types, args)]
             # Call the method with the specified arguments.
             await getattr(self, command)(*args)
             # Send back a success response.
@@ -142,11 +187,25 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
                 )
             )
 
-    async def close_vent_gate(self, gate: int) -> None:
-        self.controller.vent_close(gate)
+    async def close_vent_gate(
+        self, gate0: int, gate1: int, gate2: int, gate3: int
+    ) -> None:
+        for gate in (gate0, gate1, gate2, gate3):
+            if gate >= 0 and gate <= 3:
+                self.controller.vent_close(gate)
+            else:
+                if gate != -1:
+                    raise ValueError(f"Invalid vent ({gate}) must be between 0 and 3.")
 
-    async def open_vent_gate(self, gate: int) -> None:
-        self.controller.vent_open(gate)
+    async def open_vent_gate(
+        self, gate0: int, gate1: int, gate2: int, gate3: int
+    ) -> None:
+        for gate in (gate0, gate1, gate2, gate3):
+            if gate >= 0 and gate <= 3:
+                self.controller.vent_open(gate)
+            else:
+                if gate != -1:
+                    raise ValueError(f"Invalid vent ({gate}) must be between 0 and 3.")
 
     async def reset_extraction_fan_drive(self) -> None:
         await self.controller.vfd_fault_reset()
@@ -167,3 +226,114 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
 
     async def ping(self) -> None:
         pass
+
+    async def on_connect(self, bcs: tcpip.BaseClientOrServer) -> None:
+        if self.connected:
+            self.log.info("Connected to client.")
+            asyncio.create_task(self.monitor_status())
+        else:
+            self.log.info("Disconnected from client.")
+
+    async def monitor_status(self) -> None:
+        vent_state = None
+        last_fault = None
+        fan_drive_state = None
+
+        while self.connected:
+            try:
+                new_vent_state = [VentGateState.CLOSED] * 4
+                for i in range(4):
+                    try:
+                        new_vent_state[i] = self.controller.vent_state(i)
+                    except ValueError:
+                        # Ignore non-configured vents
+                        pass
+                last8faults = await self.controller.last8faults()
+                new_last_fault = last8faults[0][
+                    0
+                ]  # controller.last8faults returns tuple[int, str]
+
+                new_fan_drive_state = await self.controller.get_drive_state()
+            except Exception as e:
+                self.log.exception(e)
+                # Do not re-raise, so that the loop will continue
+
+            # Check whether the vent state has changed
+            if vent_state != new_vent_state:
+                self.log.info(f"Vent state changed: {vent_state} -> {new_vent_state}")
+                data = [int(state) for state in new_vent_state]
+                await self.respond(
+                    json.dumps(
+                        dict(
+                            command="evt_vent_gate_state",
+                            error=0,
+                            exception_name="",
+                            message="",
+                            traceback="",
+                            data=data,
+                        )
+                    )
+                )
+                vent_state = new_vent_state
+
+            # Check whether the last fault has changed
+            if last_fault != new_last_fault:
+                self.log.info(f"Last fault changed: {last_fault} -> {new_last_fault}")
+                await self.respond(
+                    json.dumps(
+                        dict(
+                            command="evt_extraction_fan_drive_fault_code",
+                            error=0,
+                            exception_name="",
+                            message="",
+                            traceback="",
+                            data=new_last_fault,
+                        )
+                    )
+                )
+                last_fault = new_last_fault
+
+            # Check whether the fan drive state has changed
+            if fan_drive_state != new_fan_drive_state:
+                self.log.debug(
+                    f"Fan drive state changed: {fan_drive_state} -> {new_fan_drive_state}"
+                )
+                await self.respond(
+                    json.dumps(
+                        dict(
+                            command="evt_extraction_fan_drive_state",
+                            error=0,
+                            exception_name="",
+                            message="",
+                            traceback="",
+                            data=new_fan_drive_state,
+                        )
+                    )
+                )
+                fan_drive_state = new_fan_drive_state
+
+            # Send telemetry every TELEMETRY_INTERVAL times through the loop
+            self.telemetry_count -= 1
+            if self.telemetry_count < 0:
+                self.telemetry_count = self.TELEMETRY_INTERVAL
+                telemetry = {
+                    "tel_extraction_fan": await self.controller.get_fan_frequency(),
+                }
+                await self.respond(
+                    json.dumps(
+                        dict(
+                            command="telemetry",
+                            error=0,
+                            exception_name="",
+                            message="",
+                            traceback="",
+                            data=telemetry,
+                        )
+                    )
+                )
+
+            try:
+                self.monitor_sleep_task = asyncio.ensure_future(asyncio.sleep(0.1))
+                await self.monitor_sleep_task
+            except asyncio.CancelledError:
+                continue

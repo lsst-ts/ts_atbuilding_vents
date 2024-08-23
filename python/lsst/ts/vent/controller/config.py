@@ -27,8 +27,8 @@ class Config:
     port = 502
     """The default TCP port to connect to via modbus-TCP."""
 
-    slave = 1
-    """The default modbus slave ID for the variable frequency drive."""
+    device_id = 1
+    """The default modbus device ID for the variable frequency drive."""
 
     max_freq = 50.0
     """Default maximum frequency for the dome fans."""
