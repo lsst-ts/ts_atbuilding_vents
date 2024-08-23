@@ -275,7 +275,7 @@ class Controller:
 
         Returns
         -------
-        FanDriveState
+        `FanDriveState`
             The current fan drive state based on the contents of the
             IPAE register (described as "IPar Status" in the Schneider
             Electric ATV320 manual).
@@ -430,10 +430,24 @@ class Controller:
             case _:
                 return VentGateState.FAULT
 
-    def get_opto_ch(self, *args, **kwargs) -> int:
+    def get_opto_ch(self, stack_number: int, channel_number: int) -> int:
         """Calls hardware I/O or a simulated substitute depending
         whether the class was instantiated with simulate = True.
 
+        Parameters
+        ----------
+        stack_number: int
+            The hardware stack number for the I/O card.
+
+        channel_number: int
+            The I/O channel number to read.
+
+        Returns
+        -------
+        int
+            If the I/O input channel is high, returns 1, or,
+            if the I/O input channel is low, returns 0.
+
         Raises
         ------
         AssertionError
@@ -445,13 +459,24 @@ class Controller:
 
         assert self.connected
         if self.simulator is not None:
-            return self.simulator.get_opto_ch(*args, **kwargs)
+            return self.simulator.get_opto_ch(stack_number, channel_number)
         else:
             raise NotImplementedError("Sequent hardware not implemented.")
 
-    def set_od(self, *args, **kwargs) -> None:
+    def set_od(self, stack_number: int, channel_number: int, value: int) -> None:
         """Calls harware I/O or a simulated substitute depending
         whether the class was instantiated with simulate = True.
+
+        Parameters
+        ----------
+        stack_number : int
+            The hardware stack number for the I/O card.
+
+        channel_number: int
+            The I/O channel number to write.
+
+        value: int
+            The value to send to the I/O output, 1 for high or 0 for low.
 
         Raises
         ------
@@ -464,6 +489,6 @@ class Controller:
 
         assert self.connected
         if self.simulator is not None:
-            self.simulator.set_od(*args, **kwargs)
+            self.simulator.set_od(stack_number, channel_number, value)
         else:
             raise NotImplementedError("Sequent hardware not implemented.")

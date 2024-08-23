@@ -23,13 +23,16 @@ import asyncio
 import json
 import logging
 import traceback
+from typing import Type, TypeVar
 
 from lsst.ts import tcpip, utils
 
 from .controller import Controller, VentGateState
 
+T = TypeVar("T", bool, int, float, str)
 
-def cast_string_to_type(new_type: type, value: str):
+
+def cast_string_to_type(new_type: Type[T], value: str) -> T:
     """Converts the value string to the specified type. In the case of boolean,
     "True" or "T" or "1" is ``True`` and everything else is ``False``. Other
     cases are handled by cast.
