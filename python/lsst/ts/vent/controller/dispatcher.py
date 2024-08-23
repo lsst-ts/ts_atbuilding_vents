@@ -45,6 +45,11 @@ def cast_string_to_type(new_type: Type[T], value: str) -> T:
     value: str
         The value to be converted.
 
+    Returns
+    -------
+    T
+        The value represented in the string, converted to the specfied type.
+
     Raises
     ------
     ValueError
