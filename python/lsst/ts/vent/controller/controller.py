@@ -24,7 +24,7 @@ import logging
 from lsst.ts.xml.enums.ATBuilding import FanDriveState, VentGateState
 from pymodbus.client import AsyncModbusTcpClient
 
-from . import vf_drive
+from . import sequent, vf_drive
 from .config import Config
 from .dome_vents_simulator import DomeVentsSimulator
 
@@ -348,8 +348,11 @@ class Controller:
             raise ValueError(f"Invalid {vent_number=} should be between 0 and 3")
         if self.config.vent_signal_ch[vent_number] == -1:
             raise ValueError(f"Vent {vent_number=} is not configured.")
-        self.set_od(
-            self.config.megaind_stack, self.config.vent_signal_ch[vent_number], 1
+        self.write_channel(
+            self.config.megaind_bus,
+            self.config.megaind_stack,
+            self.config.vent_signal_ch[vent_number],
+            1,
         )
 
     def vent_close(self, vent_number: int) -> None:
@@ -378,8 +381,11 @@ class Controller:
             raise ValueError(f"Invalid {vent_number=} should be between 0 and 3")
         if self.config.vent_signal_ch[vent_number] == -1:
             raise ValueError(f"Vent {vent_number=} is not configured.")
-        self.set_od(
-            self.config.megaind_stack, self.config.vent_signal_ch[vent_number], 0
+        self.write_channel(
+            self.config.megaind_bus,
+            self.config.megaind_stack,
+            self.config.vent_signal_ch[vent_number],
+            0,
         )
 
     def vent_state(self, vent_number: int) -> VentGateState:
@@ -413,11 +419,15 @@ class Controller:
         ):
             raise ValueError(f"Vent {vent_number=} is not configured.")
 
-        op_state = self.get_opto_ch(
-            self.config.megaind_stack, self.config.vent_open_limit_ch[vent_number]
+        op_state = self.read_channel(
+            self.config.sixteen_bus,
+            self.config.sixteen_stack,
+            self.config.vent_open_limit_ch[vent_number],
         )
-        cl_state = self.get_opto_ch(
-            self.config.megaind_stack, self.config.vent_close_limit_ch[vent_number]
+        cl_state = self.read_channel(
+            self.config.sixteen_bus,
+            self.config.sixteen_stack,
+            self.config.vent_close_limit_ch[vent_number],
         )
 
         match op_state, cl_state:
@@ -430,16 +440,22 @@ class Controller:
             case _:
                 return VentGateState.FAULT
 
-    def get_opto_ch(self, stack_number: int, channel_number: int) -> int:
+    def read_channel(
+        self, bus_number: int, stack_number: int, channel_number: int
+    ) -> int:
         """Calls hardware I/O or a simulated substitute depending
         whether the class was instantiated with simulate = True.
 
         Parameters
         ----------
-        stack_number: int
+        bus_number : int
+            I2C hardware bus number. The hardware is addressable by the
+            device /dev/i2c-{bus_number}.
+
+        stack_number : int
             The hardware stack number for the I/O card.
 
-        channel_number: int
+        channel_number : int
             The I/O channel number to read.
 
         Returns
@@ -453,29 +469,35 @@ class Controller:
         AssertionError
             If the controller is not connected.
 
-        NotImplementedError
-            If we are not in simulation mode.
+        OSError
+            If there is a communication error.
         """
 
         assert self.connected
         if self.simulator is not None:
-            return self.simulator.get_opto_ch(stack_number, channel_number)
+            return self.simulator.read_channel(bus_number, stack_number, channel_number)
         else:
-            raise NotImplementedError("Sequent hardware not implemented.")
+            sequent.read_channel(bus_number, stack_number, channel_number)
 
-    def set_od(self, stack_number: int, channel_number: int, value: int) -> None:
+    def write_channel(
+        self, bus_number: int, stack_number: int, channel_number: int, value: int
+    ) -> None:
         """Calls harware I/O or a simulated substitute depending
         whether the class was instantiated with simulate = True.
 
         Parameters
         ----------
+        bus_number : int
+            I2C hardware bus number. The hardware is addressable by the
+            device /dev/i2c-{bus_number}.
+
         stack_number : int
             The hardware stack number for the I/O card.
 
-        channel_number: int
+        channel_number : int
             The I/O channel number to write.
 
-        value: int
+        value : int
             The value to send to the I/O output, 1 for high or 0 for low.
 
         Raises
@@ -483,12 +505,14 @@ class Controller:
         AssertionError
             If the controller is not connected.
 
-        NotImplementedError
-            If we are not in simulation mode.
+        OSError
+            If there is a communication error.
         """
 
         assert self.connected
         if self.simulator is not None:
-            self.simulator.set_od(stack_number, channel_number, value)
+            self.simulator.write_channel(
+                bus_number, stack_number, channel_number, value
+            )
         else:
-            raise NotImplementedError("Sequent hardware not implemented.")
+            sequent.write_channel(bus_number, stack_number, channel_number, value)

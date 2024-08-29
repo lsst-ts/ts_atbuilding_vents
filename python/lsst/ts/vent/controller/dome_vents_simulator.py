@@ -47,9 +47,23 @@ class DomeVentsSimulator:
     async def stop(self):
         await self.modbus_simulator.stop()
 
-    def get_opto_ch(self, stack: int, channel: int) -> int:
-        """Simulates the behavior of megaind.getOptoCh, as if connected
+    def read_channel(
+        self, bus_number: int, stack_number: int, channel_number: int
+    ) -> int:
+        """Simulates the behavior of seequent.read_channel, as if connected
         to dome vents configured as described in config.py.
+
+        Parameters
+        ----------
+        bus_number : int
+            I2C hardware bus number. The hardware is addressable by the
+            device /dev/i2c-{bus_number}.
+
+        stack_number : int
+            The hardware stack number for the I/O card.
+
+        channel_number : int
+            The I/O channel number to read.
 
         Returns
         -------
@@ -62,15 +76,32 @@ class DomeVentsSimulator:
             or the stack index does not match the configured value.
         """
 
-        channel -= 1  # Channels are 1-indexed
+        channel_number -= 1  # Channels are 1-indexed
 
-        assert stack == self.cfg.megaind_stack
-        assert 0 <= channel <= 3
-        return self.input_bits[channel]
+        assert bus_number == self.cfg.sixteen_bus
+        assert stack_number == self.cfg.sixteen_stack
+        assert 0 <= channel_number <= 3
+        return self.input_bits[channel_number]
 
-    def set_od(self, stack: int, channel: int, val: int) -> None:
-        """Simulates the behavior of megaind.setOd, as if connected
+    def write_channel(
+        self, bus_number: int, stack_number: int, channel_number: int, value: int
+    ) -> None:
+        """Simulates the behavior of sequent.write_channel, as if connected
         to dome vents configured as described in config.py.
+
+        Parameters
+        ----------
+        bus_number : int
+            The I2C bus number of the device
+
+        stack_number : int
+            The hardware stack number for the I/O card.
+
+        channel_number : int
+            The I/O channel number to write.
+
+        value : int
+            The value to send to the I/O output, 1 for high or 0 for low.
 
         Raises
         ------
@@ -80,17 +111,20 @@ class DomeVentsSimulator:
             specified `val` is not zero or one.
         """
 
-        channel -= 1  # Channels are 1-indexed
+        channel_number -= 1  # Channels are 1-indexed
 
-        assert stack == self.cfg.megaind_stack
-        assert 0 <= channel <= 3
-        assert val == 0 or val == 1
-        vent_number = [i for i in range(4) if self.cfg.vent_signal_ch[i] - 1 == channel]
+        assert bus_number == self.cfg.megaind_bus
+        assert stack_number == self.cfg.megaind_stack
+        assert 0 <= channel_number <= 3
+        assert value == 0 or value == 1
+        vent_number = [
+            i for i in range(4) if self.cfg.vent_signal_ch[i] - 1 == channel_number
+        ]
         assert len(vent_number) <= 1
         if len(vent_number) == 1:
             vent_number = vent_number[0]
-            op = val
-            cl = 0 if val else 1
+            op = value
+            cl = 0 if value else 1
             self.input_bits[self.cfg.vent_open_limit_ch[vent_number] - 1] = op
             self.input_bits[self.cfg.vent_close_limit_ch[vent_number] - 1] = cl
 

@@ -33,8 +33,17 @@ class Config:
     max_freq = 50.0
     """Default maximum frequency for the dome fans."""
 
+    megaind_bus = 1
+    """Bus number for the megaind card."""
+
     megaind_stack = 1
     """The stack level (i2c target address) of the megaind card."""
+
+    sixteen_bus = 2
+    """Bus number for the 16inp card."""
+
+    sixteen_stack = 1
+    """The stack level (i2c target address) of the 16inp card."""
 
     vent_signal_ch = [4, -1, -1, -1]
     """I/O Channel open signal for the four vents on the opto-outputs."""
