@@ -26,7 +26,7 @@ import unittest
 
 from lsst.ts import tcpip
 from lsst.ts.vent.controller import Config, Controller, Dispatcher
-from lsst.ts.xml.enums.ATBuilding import VentGateState
+from lsst.ts.vent.controller.ATBuilding import VentGateState
 
 # Standard timeout for TCP/IP messages (sec).
 TCP_TIMEOUT = 1

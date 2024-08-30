@@ -21,7 +21,9 @@
 
 import logging
 
-from lsst.ts.xml.enums.ATBuilding import FanDriveState, VentGateState
+# ATBuilding.py is swiped from ts_xml because it is not
+# currently available on the RPi.
+from .ATBuilding import FanDriveState, VentGateState
 from pymodbus.client import AsyncModbusTcpClient
 
 from . import sequent, vf_drive

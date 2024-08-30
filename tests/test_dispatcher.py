@@ -27,7 +27,7 @@ from unittest.mock import AsyncMock, MagicMock, call, patch
 
 from lsst.ts import tcpip
 from lsst.ts.vent.controller import Dispatcher
-from lsst.ts.xml.enums.ATBuilding import FanDriveState
+from lsst.ts.vent.controller.ATBuilding import FanDriveState
 
 # Standard timeout for TCP/IP messages (sec).
 TCP_TIMEOUT = 10

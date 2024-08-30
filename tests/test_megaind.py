@@ -22,7 +22,7 @@
 import unittest
 
 from lsst.ts.vent.controller import Controller
-from lsst.ts.xml.enums.ATBuilding import VentGateState
+from lsst.ts.vent.controller.ATBuilding import VentGateState
 
 
 class TestLouvres(unittest.IsolatedAsyncioTestCase):
