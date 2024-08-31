@@ -31,7 +31,7 @@ from .dispatcher import Dispatcher
 def parse_args() -> None:
     parser = argparse.ArgumentParser(
         prog="ts_atbuilding_vents",
-        description="Controls dome vents and exhaust fan via the RPi."
+        description="Controls dome vents and exhaust fan via the RPi.",
     )
 
     parser.add_argument(
@@ -118,9 +118,8 @@ async def async_main():
 
     # Set up dispatcher and attach controller
     global dispatcher
-    dispatcher = Dispatcher(
-        port=args.port, log=log, controller=controller
-    )
+    dispatcher = Dispatcher(port=args.port, log=log, controller=controller)
+
 
 if __name__ == "__main__":
     asyncio.run(async_main())
