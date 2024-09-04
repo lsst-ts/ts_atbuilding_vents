@@ -19,7 +19,6 @@ test:
     - pymodbus
   source_files:
     - python
-    - bin
     - tests
     - pyproject.toml
   commands:
