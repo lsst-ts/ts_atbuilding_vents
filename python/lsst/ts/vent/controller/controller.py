@@ -481,7 +481,7 @@ class Controller:
         if self.simulator is not None:
             return self.simulator.read_channel(bus_number, stack_number, channel_number)
         else:
-            sequent.read_channel(bus_number, stack_number, channel_number)
+            return sequent.read_channel(bus_number, stack_number, channel_number)
 
     def write_channel(
         self, bus_number: int, stack_number: int, channel_number: int, value: int

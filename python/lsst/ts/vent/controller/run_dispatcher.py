@@ -139,5 +139,5 @@ async def async_main() -> None:
     Dispatcher(port=args.port, log=log, controller=controller)
 
 
-if __name__ == "__main__":
+def main() -> None:
     asyncio.run(async_main())
