@@ -56,7 +56,7 @@ MEGA_MEM_RELAY_SET = 1  # Command to set the relay active
 MEGA_MEM_RELAY_CLR = 2  # Command to set the relay inactive
 
 
-def write_channel(bus_number: int, stack: int, channel: int, value: int):
+def write_channel(bus_number: int, stack: int, channel: int, value: int) -> None:
     """Writes to the general purpose output on the megaind board.
 
     Parameters

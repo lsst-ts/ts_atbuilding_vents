@@ -468,9 +468,6 @@ class Controller:
         ------
         AssertionError
             If the controller is not connected.
-
-        OSError
-            If there is a communication error.
         """
 
         assert self.connected
@@ -504,9 +501,6 @@ class Controller:
         ------
         AssertionError
             If the controller is not connected.
-
-        OSError
-            If there is a communication error.
         """
 
         assert self.connected
