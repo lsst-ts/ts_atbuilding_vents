@@ -22,36 +22,36 @@
 import unittest
 
 from lsst.ts.vent.controller import Controller
-from lsst.ts.vent.controller.ATBuilding import VentGateState
+from lsst.ts.xml.enums.ATBuilding import VentGateState
 
 
 class TestLouvres(unittest.IsolatedAsyncioTestCase):
-    async def asyncSetUp(self):
+    async def asyncSetUp(self) -> None:
         self.controller = Controller(simulate=True)
         await self.controller.connect()
 
-    async def asyncTearDown(self):
+    async def asyncTearDown(self) -> None:
         await self.controller.stop()
 
-    async def test_vent_open(self):
+    async def test_vent_open(self) -> None:
         self.controller.vent_open(0)
         self.assertEqual(self.controller.vent_state(0), VentGateState.OPENED)
 
-    async def test_vent_close(self):
+    async def test_vent_close(self) -> None:
         self.controller.vent_close(0)
         self.assertEqual(self.controller.vent_state(0), VentGateState.CLOSED)
 
-    async def test_vent_partiallyopen(self):
+    async def test_vent_partiallyopen(self) -> None:
         self.controller.simulator.set_bits((0, 0, 0, 0))
         self.assertEqual(self.controller.vent_state(0), VentGateState.PARTIALLY_OPEN)
 
     @unittest.expectedFailure
-    async def test_vent_invalidstate(self):
+    async def test_vent_invalidstate(self) -> None:
         # There currently is no FAULT attribute in the VentGateState enum
         self.controller.simulator.set_bits((1, 1, 1, 1))
         self.assertEqual(self.controller.vent_state(0), VentGateState.FAULT)
 
-    def test_vent_invalidvent(self):
+    def test_vent_invalidvent(self) -> None:
         with self.assertRaises(ValueError):
             self.controller.vent_open(1000000)
         with self.assertRaises(ValueError):
@@ -59,7 +59,7 @@ class TestLouvres(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(ValueError):
             self.controller.vent_state(1000000)
 
-    async def test_non_configured_vent(self):
+    async def test_non_configured_vent(self) -> None:
         with self.assertRaises(ValueError):
             self.controller.vent_open(1)
         with self.assertRaises(ValueError):

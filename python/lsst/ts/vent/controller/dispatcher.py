@@ -23,7 +23,7 @@ import asyncio
 import json
 import logging
 import traceback
-from typing import Type, TypeVar
+from typing import Final, Type, TypeVar
 
 from lsst.ts import tcpip, utils
 
@@ -58,9 +58,9 @@ def cast_string_to_type(new_type: Type[T], value: str) -> T:
 
     if new_type is bool:  # Boolean is a special case
         if value.lower() in ("true", "t", "1"):
-            return True
+            return new_type(True)
         elif value.lower() in ("false", "f", "0"):
-            return False
+            return new_type(False)
         raise ValueError(
             "Expected bool value "
             + "('true', 't', '1', 'false', 'f', '0')"
@@ -86,7 +86,7 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
     def __init__(
         self, port: int, log: logging.Logger, controller: Controller | None = None
     ):
-        self.dispatch_dict = {
+        self.dispatch_dict: Final[dict[str, list[type]]] = {
             "close_vent_gate": [int, int, int, int],
             "open_vent_gate": [int, int, int, int],
             "reset_extraction_fan_drive": [],

@@ -43,7 +43,7 @@ class Controller:
         self.default_fan_frequency = self.config.max_freq
         self.log = logging.getLogger(type(self).__name__)
         self.simulator = DomeVentsSimulator(self.config) if simulate else None
-        self.vfd_client = None
+        self.vfd_client: None | AsyncModbusTcpClient = None
         self.connected = False
 
     async def connect(self) -> None:
@@ -97,6 +97,7 @@ class Controller:
 
         self.log.debug("get fan_manual_control")
         assert self.connected
+        assert self.vfd_client is not None
         settings = tuple(
             [
                 (
@@ -135,13 +136,14 @@ class Controller:
 
         self.log.debug("set vfd_manual_control")
         assert self.connected
+        assert self.vfd_client is not None
         settings = vf_drive.MANUAL if manual else vf_drive.AUTO
         for address, value in zip(vf_drive.CFG_REGISTERS, settings):
             await self.vfd_client.write_register(
                 slave=self.config.device_id, address=address, value=value
             )
 
-    async def start_fan(self):
+    async def start_fan(self) -> None:
         """Starts the dome exhaust fan
 
         Raises
@@ -156,7 +158,7 @@ class Controller:
         assert self.connected
         await self.set_fan_frequency(self.default_fan_frequency)
 
-    async def stop_fan(self):
+    async def stop_fan(self) -> None:
         """Stops the dome exhaust fan
 
         Raises
@@ -185,6 +187,7 @@ class Controller:
 
         self.log.debug("get fan_frequency")
         assert self.connected
+        assert self.vfd_client is not None
         cmd = (
             await self.vfd_client.read_holding_registers(
                 slave=self.config.device_id, address=vf_drive.Registers.CMD_REGISTER
@@ -222,6 +225,7 @@ class Controller:
         """
         self.log.debug("set fan_frequency")
         assert self.connected
+        assert self.vfd_client is not None
         if not 0 <= frequency <= self.config.max_freq:
             raise ValueError(f"Frequency must be between 0 and {self.config.max_freq}")
 
@@ -247,6 +251,7 @@ class Controller:
         """
 
         assert self.connected
+        assert self.vfd_client is not None
         for address, value in vf_drive.FAULT_RESET_SEQUENCE:
             await self.vfd_client.write_register(
                 slave=self.config.device_id, address=address, value=value
@@ -282,6 +287,7 @@ class Controller:
         """
 
         assert self.connected
+        assert self.vfd_client is not None
         ipae = (
             await self.vfd_client.read_holding_registers(
                 slave=self.config.device_id, address=vf_drive.Registers.IPAE_REGISTER
@@ -315,6 +321,7 @@ class Controller:
 
         self.log.debug("last8faults")
         assert self.connected
+        assert self.vfd_client is not None
         rvals = await self.vfd_client.read_holding_registers(
             slave=self.config.device_id,
             address=vf_drive.Registers.FAULT_REGISTER,
