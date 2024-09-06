@@ -28,7 +28,19 @@ from .controller import Controller
 from .dispatcher import Dispatcher
 
 
-def parse_args() -> None:
+def parse_args() -> argparse.Namespace:
+    """Parses command line arguments.
+
+    This function can be used with `async_main()`
+    to parse the command line arguments for
+    setup of the Raspberry Pi.
+
+    Returns
+    -------
+    `argparse.Namespace`:
+        The parsed command line arguments.
+
+    """
     parser = argparse.ArgumentParser(
         prog="ts_atbuilding_vents",
         description="Controls dome vents and exhaust fan via the RPi.",
@@ -97,7 +109,14 @@ def parse_args() -> None:
     return parser.parse_args()
 
 
-async def async_main():
+async def async_main() -> None:
+    """Sets up and invokes a dispatcher.
+
+    This function can be used from the command line to create
+    a hardware controller and dispatcher for the ATBuilding
+    Raspberry Pi.
+
+    """
     args = parse_args()
     log = logging.getLogger()
 
@@ -117,8 +136,7 @@ async def async_main():
     await controller.connect()
 
     # Set up dispatcher and attach controller
-    global dispatcher
-    dispatcher = Dispatcher(port=args.port, log=log, controller=controller)
+    Dispatcher(port=args.port, log=log, controller=controller)
 
 
 if __name__ == "__main__":
