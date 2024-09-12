@@ -16,8 +16,8 @@ test:
     - ts-tcpip
     - ts-utils
     - ts-xml
-    - smbus3
-    - pymodbus
+    - smbus3 0.5.5
+    - pymodbus 3.6.*
   source_files:
     - python
     - tests
@@ -42,5 +42,5 @@ requirements:
     - ts-tcpip
     - ts-utils
     - ts-xml
-    - pymodbus
-    - smbus3
+    - pymodbus 3.6.*
+    - smbus3 0.5.5
