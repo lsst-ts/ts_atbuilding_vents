@@ -1,0 +1,3 @@
+@Library('JenkinsShared')_
+CondaPipeline([], "ts_atbuilding_vents", "lsst.ts.vent.controller", "noarch")
+

@@ -26,17 +26,17 @@ from lsst.ts.vent.controller import Config, Controller
 
 class TestFan(unittest.IsolatedAsyncioTestCase):
 
-    async def asyncSetUp(self):
+    async def asyncSetUp(self) -> None:
         cfg = Config()
         cfg.hostname = "localhost"
         cfg.port = 26034
         self.controller = Controller(cfg, simulate=True)
         await self.controller.connect()
 
-    async def asyncTearDown(self):
+    async def asyncTearDown(self) -> None:
         await self.controller.stop()
 
-    async def test_fan_manual(self):
+    async def test_fan_manual(self) -> None:
         self.assertTrue(
             self.controller.fan_manual_control,
             "Simulated drive expected to start in manual mode",
@@ -52,7 +52,7 @@ class TestFan(unittest.IsolatedAsyncioTestCase):
             "set_fan_manual_control should change state (to True)",
         )
 
-    async def test_start_fan(self):
+    async def test_start_fan(self) -> None:
         self.assertEqual(
             0.0,
             await self.controller.get_fan_frequency(),
@@ -65,7 +65,7 @@ class TestFan(unittest.IsolatedAsyncioTestCase):
             "start_fan should change fan frequency to default value",
         )
 
-    async def test_fan_stop_fan(self):
+    async def test_fan_stop_fan(self) -> None:
         await self.controller.start_fan()
         self.assertNotEqual(
             0.0,
@@ -79,7 +79,7 @@ class TestFan(unittest.IsolatedAsyncioTestCase):
             "stop_fan should change fan frequency to 0.0",
         )
 
-    async def test_set_fan_frequency(self):
+    async def test_set_fan_frequency(self) -> None:
         await self.controller.start_fan()
         self.assertNotEqual(
             0.0,
@@ -95,11 +95,11 @@ class TestFan(unittest.IsolatedAsyncioTestCase):
             msg="set_fan_frequency should change fan frequency to 50.0",
         )
 
-    async def test_fault_recover(self):
+    async def test_fault_recover(self) -> None:
         r = await self.controller.vfd_fault_reset()
         self.assertIsNone(r)  # Yay I guess
 
-    async def test_last8faults(self):
+    async def test_last8faults(self) -> None:
         last8 = await self.controller.last8faults()
         self.assertEqual(len(last8), 8, "last8faults should return 8 elements")
         for i, s in last8:

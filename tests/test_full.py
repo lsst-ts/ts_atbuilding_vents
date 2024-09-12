@@ -35,7 +35,7 @@ TCP_TIMEOUT = 1
 class TestFull(unittest.IsolatedAsyncioTestCase):
     """Identical to the dispatcher test but without mocking."""
 
-    async def asyncSetUp(self):
+    async def asyncSetUp(self) -> None:
         self.log = logging.getLogger()
 
         # Build the simulation controller and the dispatcher
@@ -59,7 +59,7 @@ class TestFull(unittest.IsolatedAsyncioTestCase):
         await self.client.start_task
         await self.dispatcher.connected_task
 
-    async def asyncTearDown(self):
+    async def asyncTearDown(self) -> None:
         await self.client.close()
         await self.dispatcher.close()
         await self.controller.stop()
@@ -88,7 +88,7 @@ class TestFull(unittest.IsolatedAsyncioTestCase):
 
     def check_response(
         self, response: str, expected_command: str, expected_error: str | None = None
-    ) -> dict:
+    ) -> None:
         json_data = json.loads(response)
         self.assertEqual(json_data["command"], expected_command)
         if expected_error is None:
@@ -98,28 +98,28 @@ class TestFull(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(json_data["exception_name"], expected_error)
             self.assertTrue("message" in json_data)
 
-    async def test_ping(self):
+    async def test_ping(self) -> None:
         """Check basic functionality with a ping command."""
         response = await self.send_and_receive("ping")
         self.check_response(response, "ping")
 
-    async def test_vent_open(self):
+    async def test_vent_open(self) -> None:
         response = await self.send_and_receive("open_vent_gate 0 -1 -1 -1")
         self.check_response(response, "open_vent_gate")
         self.assertEqual(self.controller.vent_state(0), VentGateState.OPENED)
 
-    async def test_vent_close(self):
+    async def test_vent_close(self) -> None:
         response = await self.send_and_receive("close_vent_gate 0 -1 -1 -1")
         self.check_response(response, "close_vent_gate")
         self.assertEqual(self.controller.vent_state(0), VentGateState.CLOSED)
 
-    async def test_invalid_vent(self):
+    async def test_invalid_vent(self) -> None:
         response = await self.send_and_receive("open_vent_gate 456 -1 -1 -1")
         self.check_response(response, "open_vent_gate", "ValueError")
         response = await self.send_and_receive("close_vent_gate 123 -1 -1 -1")
         self.check_response(response, "close_vent_gate", "ValueError")
 
-    async def test_fan_manual(self):
+    async def test_fan_manual(self) -> None:
         response = await self.send_and_receive(
             "set_extraction_fan_manual_control_mode True"
         )
@@ -141,18 +141,18 @@ class TestFull(unittest.IsolatedAsyncioTestCase):
             response, "set_extraction_fan_manual_control_mode", "TypeError"
         )
 
-    async def test_start_fan(self):
+    async def test_start_fan(self) -> None:
         response = await self.send_and_receive("start_extraction_fan")
         self.check_response(response, "start_extraction_fan")
 
-    async def test_stop_fan(self):
+    async def test_stop_fan(self) -> None:
         response = await self.send_and_receive("start_extraction_fan")
         self.check_response(response, "start_extraction_fan")
 
-    async def test_set_fan_frequency(self):
+    async def test_set_fan_frequency(self) -> None:
         response = await self.send_and_receive("set_extraction_fan_drive_freq 12.5")
         self.check_response(response, "set_extraction_fan_drive_freq")
 
-    async def test_fault_recover(self):
+    async def test_fault_recover(self) -> None:
         response = await self.send_and_receive("reset_extraction_fan_drive")
         self.check_response(response, "reset_extraction_fan_drive")

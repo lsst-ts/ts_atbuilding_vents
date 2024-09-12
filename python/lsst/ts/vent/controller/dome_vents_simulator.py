@@ -41,10 +41,10 @@ class DomeVentsSimulator:
             json_file=os.path.dirname(__file__) + "/simulator_setup.json",
         )
 
-    async def start(self):
+    async def start(self) -> None:
         await self.modbus_simulator.run_forever(only_start=True)
 
-    async def stop(self):
+    async def stop(self) -> None:
         await self.modbus_simulator.stop()
 
     def read_channel(
@@ -117,12 +117,12 @@ class DomeVentsSimulator:
         assert stack_number == self.cfg.megaind_stack
         assert 0 <= channel_number <= 3
         assert value == 0 or value == 1
-        vent_number = [
+        vent_number_array = [
             i for i in range(4) if self.cfg.vent_signal_ch[i] - 1 == channel_number
         ]
-        assert len(vent_number) <= 1
-        if len(vent_number) == 1:
-            vent_number = vent_number[0]
+        assert len(vent_number_array) <= 1
+        if len(vent_number_array) == 1:
+            vent_number = vent_number_array[0]
             op = value
             cl = 0 if value else 1
             self.input_bits[self.cfg.vent_open_limit_ch[vent_number] - 1] = op

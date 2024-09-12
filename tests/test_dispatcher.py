@@ -34,7 +34,7 @@ TCP_TIMEOUT = 10
 
 
 class TestDispatcher(unittest.IsolatedAsyncioTestCase):
-    async def asyncSetUp(self):
+    async def asyncSetUp(self) -> None:
         self.log = logging.getLogger()
 
         # Mock the controller
@@ -78,7 +78,7 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
         await self.client.start_task
         await self.dispatcher.connected_task
 
-    async def asyncTearDown(self):
+    async def asyncTearDown(self) -> None:
         await self.client.close()
         await self.dispatcher.close()
         self.patcher.stop()
@@ -107,7 +107,7 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
 
     def check_response(
         self, response: str, expected_command: str, expected_error: str | None = None
-    ) -> dict:
+    ) -> None:
         json_data = json.loads(response)
         self.assertEqual(json_data["command"], expected_command)
         if expected_error is None:
@@ -117,24 +117,24 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(json_data["exception_name"], expected_error)
             self.assertTrue("message" in json_data)
 
-    async def test_ping(self):
+    async def test_ping(self) -> None:
         """Check basic functionality with a ping command."""
         response = await self.send_and_receive("ping")
         self.check_response(response, "ping")
 
-    async def test_close_vent_gate(self):
+    async def test_close_vent_gate(self) -> None:
         """Test close_vent_gate command."""
         response = await self.send_and_receive("close_vent_gate 1 -1 -1 -1")
         self.check_response(response, "close_vent_gate")
         self.mock_controller.vent_close.assert_called_once_with(1)
 
-    async def test_open_vent_gate(self):
+    async def test_open_vent_gate(self) -> None:
         """Test open_vent_gate command."""
         response = await self.send_and_receive("open_vent_gate 2 -1 -1 -1")
         self.check_response(response, "open_vent_gate")
         self.mock_controller.vent_open.assert_called_once_with(2)
 
-    async def test_close_vent_multiple(self):
+    async def test_close_vent_multiple(self) -> None:
         """Test close_vent_gate command sending it multiple gates."""
         response = await self.send_and_receive("close_vent_gate 1 2 3 -1")
         self.check_response(response, "close_vent_gate")
@@ -142,7 +142,7 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
             [call(1), call(2), call(3)], any_order=False
         )
 
-    async def test_open_vent_multiple(self):
+    async def test_open_vent_multiple(self) -> None:
         """Test open_vent_gate command sending it multiple gates."""
         response = await self.send_and_receive("open_vent_gate -1 1 2 3")
         self.check_response(response, "open_vent_gate")
@@ -150,19 +150,19 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
             [call(1), call(2), call(3)], any_order=False
         )
 
-    async def test_reset_extraction_fan_drive(self):
+    async def test_reset_extraction_fan_drive(self) -> None:
         """Test reset_extraction_fan_drive command."""
         response = await self.send_and_receive("reset_extraction_fan_drive")
         self.check_response(response, "reset_extraction_fan_drive")
         self.mock_controller.vfd_fault_reset.assert_called_once_with()
 
-    async def test_set_extraction_fan_drive_freq(self):
+    async def test_set_extraction_fan_drive_freq(self) -> None:
         """Test set_extraction_fan_drive_freq command."""
         response = await self.send_and_receive("set_extraction_fan_drive_freq 22.5")
         self.check_response(response, "set_extraction_fan_drive_freq")
         self.mock_controller.set_fan_frequency.assert_called_once_with(22.5)
 
-    async def test_set_extraction_fan_manual_control_mode_true(self):
+    async def test_set_extraction_fan_manual_control_mode_true(self) -> None:
         """Test setExtractionFanManualControlMode with argument True."""
         response = await self.send_and_receive(
             "set_extraction_fan_manual_control_mode True"
@@ -170,7 +170,7 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
         self.check_response(response, "set_extraction_fan_manual_control_mode")
         self.mock_controller.fan_manual_control.assert_called_once_with(True)
 
-    async def test_set_extraction_fan_manual_control_mode_false(self):
+    async def test_set_extraction_fan_manual_control_mode_false(self) -> None:
         """Test set_extraction_fan_manual_control_mode with argument False."""
         response = await self.send_and_receive(
             "set_extraction_fan_manual_control_mode False"
@@ -178,29 +178,29 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
         self.check_response(response, "set_extraction_fan_manual_control_mode")
         self.mock_controller.fan_manual_control.assert_called_once_with(False)
 
-    async def test_start_extraction_fan(self):
+    async def test_start_extraction_fan(self) -> None:
         """Test start_extraction_fan command."""
         response = await self.send_and_receive("start_extraction_fan")
         self.check_response(response, "start_extraction_fan")
         self.mock_controller.start_fan.assert_called_once_with()
 
-    async def test_stop_extraction_fan(self):
+    async def test_stop_extraction_fan(self) -> None:
         """Test stop_extraction_fan command."""
         response = await self.send_and_receive("stop_extraction_fan")
         self.check_response(response, "stop_extraction_fan")
         self.mock_controller.stop_fan.assert_called_once_with()
 
-    async def test_badcommand(self):
+    async def test_badcommand(self) -> None:
         """Test with an invalid command."""
         response = await self.send_and_receive("thisisnotacommand")
         self.check_response(response, "thisisnotacommand", "NotImplementedError")
 
-    async def test_wrongargumenttype(self):
+    async def test_wrongargumenttype(self) -> None:
         """Test with incorrect argument types."""
         response = await self.send_and_receive("close_vent_gate 0.5 0.5 0.5 0.5")
         self.check_response(response, "close_vent_gate", "ValueError")
 
-    async def test_wrongargumentcount(self):
+    async def test_wrongargumentcount(self) -> None:
         """Test for incorrect number of arguments."""
         response = await self.send_and_receive("close_vent_gate")
         self.check_response(response, "close_vent_gate", "TypeError")
@@ -211,14 +211,14 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
         response = await self.send_and_receive("ping 3.14159")
         self.check_response(response, "ping", "TypeError")
 
-    async def test_telemetry(self):
+    async def test_telemetry(self) -> None:
         """Test that telemetry is sent from time to time."""
         response = await self.send_and_receive("", pass_telemetry=True)
         self.check_response(response, "telemetry")
         response = await self.send_and_receive("", pass_telemetry=True)
         self.check_response(response, "telemetry")
 
-    async def test_gate_event(self):
+    async def test_gate_event(self) -> None:
         """Test that an event is emitted when the gate state changes."""
         gate_state = [self.mock_controller.vent_state.return_value] * 4
         response = await self.send_and_receive("", pass_event="evt_vent_gate_state")
@@ -231,7 +231,7 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
         response_json = json.loads(response)
         self.assertEqual(response_json["data"], gate_state)
 
-    async def test_drive_fault(self):
+    async def test_drive_fault(self) -> None:
         """Test that a drive fault is emitted."""
         fault_code = self.mock_controller.last8faults.return_value[0][0]
         response = await self.send_and_receive(

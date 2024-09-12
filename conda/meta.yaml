@@ -1,0 +1,46 @@
+{% set data= load_setup_py_data() %}
+package:
+  name: "ts-atbuilding-vents"
+  version: {{ data.get('version') }}
+
+source:
+  path: ../
+
+build:
+  noarch: python
+  script: {{ PYTHON }} -m pip install --no-deps --ignore-installed .
+
+test:
+  requires:
+    - ts-conda-build =0.4
+    - ts-tcpip
+    - ts-utils
+    - ts-xml
+    - smbus3 0.5.5
+    - pymodbus 3.6.*
+  source_files:
+    - python
+    - tests
+    - pyproject.toml
+  commands:
+    - pytest
+
+requirements:
+  host:
+    - python {{ python }}
+    - pip
+    - setuptools_scm
+    - setuptools
+  build:
+    - python {{ python }}
+    - setuptools_scm
+    - setuptools
+  run:
+    - python {{ python }}
+    - setuptools
+    - setuptools_scm
+    - ts-tcpip
+    - ts-utils
+    - ts-xml
+    - pymodbus 3.6.*
+    - smbus3 0.5.5
