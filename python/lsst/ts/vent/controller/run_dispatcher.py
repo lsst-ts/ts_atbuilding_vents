@@ -106,6 +106,13 @@ def parse_args() -> argparse.Namespace:
         help="16inp card stack level.",
     )
 
+    parser.add_argument(
+        "--simulate",
+        type=bool,
+        default=False,
+        help="Enable simulation mode.",
+    )
+
     return parser.parse_args()
 
 
@@ -132,7 +139,7 @@ async def async_main() -> None:
     cfg.sixteen_stack = args.sixteen_stack_level
 
     # Set up controller
-    controller = Controller(cfg, simulate=True)
+    controller = Controller(cfg, simulate=args.simulate)
     await controller.connect()
 
     # Set up dispatcher and attach controller
@@ -140,4 +147,6 @@ async def async_main() -> None:
 
 
 def main() -> None:
-    asyncio.run(async_main())
+    loop = asyncio.get_event_loop()
+    asyncio.ensure_future(async_main())
+    loop.run_forever()
