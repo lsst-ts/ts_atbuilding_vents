@@ -104,7 +104,11 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
         self.TELEMETRY_INTERVAL = 100
 
         super().__init__(
-            port=port, log=log, connect_callback=self.on_connect, terminator=b"\r"
+            port=port,
+            host="0.0.0.0",
+            log=log,
+            connect_callback=self.on_connect,
+            terminator=b"\r",
         )
 
     async def respond(self, message: str) -> None:
