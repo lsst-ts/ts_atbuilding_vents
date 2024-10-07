@@ -108,8 +108,7 @@ def parse_args() -> argparse.Namespace:
 
     parser.add_argument(
         "--simulate",
-        type=bool,
-        default=False,
+        action="store_true",
         help="Enable simulation mode.",
     )
 
@@ -126,6 +125,7 @@ async def async_main() -> None:
     """
     args = parse_args()
     log = logging.getLogger()
+    log.setLevel(logging.DEBUG)
 
     # Set up configuration
     cfg = Config()
@@ -139,14 +139,20 @@ async def async_main() -> None:
     cfg.sixteen_stack = args.sixteen_stack_level
 
     # Set up controller
+    if args.simulate:
+        cfg.hostname = "localhost"
+        cfg.port = 26034
     controller = Controller(cfg, simulate=args.simulate)
     await controller.connect()
 
     # Set up dispatcher and attach controller
-    Dispatcher(port=args.port, log=log, controller=controller)
+    dispatcher = Dispatcher(  # noqa: F841
+        port=args.port, log=log, controller=controller
+    )
+
+    # Keep the event loop running indefinitely.
+    await asyncio.Event().wait()
 
 
 def main() -> None:
-    loop = asyncio.get_event_loop()
-    asyncio.ensure_future(async_main())
-    loop.run_forever()
+    asyncio.run(async_main())
