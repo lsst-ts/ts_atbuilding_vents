@@ -36,20 +36,20 @@ class Config:
     megaind_bus = 1
     """Bus number for the megaind card."""
 
-    megaind_stack = 1
+    megaind_stack = 0
     """The stack level (i2c target address) of the megaind card."""
 
-    sixteen_bus = 2
+    sixteen_bus = 1
     """Bus number for the 16inp card."""
 
     sixteen_stack = 1
     """The stack level (i2c target address) of the 16inp card."""
 
-    vent_signal_ch = [4, -1, -1, -1]
+    vent_signal_ch = [1, 2, 3, 4]
     """I/O Channel open signal for the four vents on the opto-outputs."""
 
-    vent_open_limit_ch = [1, -1, -1, -1]
+    vent_open_limit_ch = [15, 13, 11, 9]
     """I/O Channel open limits for the four vents, on the opto-inputs."""
 
-    vent_close_limit_ch = [2, -1, -1, -1]
+    vent_close_limit_ch = [16, 14, 12, 10]
     """I/O Channel close limits for the four vents, on the opto-inputs."""

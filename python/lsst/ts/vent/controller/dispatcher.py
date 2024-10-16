@@ -104,7 +104,11 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
         self.TELEMETRY_INTERVAL = 100
 
         super().__init__(
-            port=port, log=log, connect_callback=self.on_connect, terminator=b"\r"
+            port=port,
+            host="0.0.0.0",
+            log=log,
+            connect_callback=self.on_connect,
+            terminator=b"\r",
         )
 
     async def respond(self, message: str) -> None:
@@ -238,6 +242,7 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
         vent_state = None
         last_fault = None
         fan_drive_state = None
+        fan_frequency = None
 
         while self.connected:
             try:
@@ -314,10 +319,12 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
 
             # Send telemetry every TELEMETRY_INTERVAL times through the loop
             self.telemetry_count -= 1
-            if self.telemetry_count < 0:
+            new_fan_frequency = await self.controller.get_fan_frequency()
+            if self.telemetry_count < 0 or new_fan_frequency != fan_frequency:
+                fan_frequency = new_fan_frequency
                 self.telemetry_count = self.TELEMETRY_INTERVAL
                 telemetry = {
-                    "tel_extraction_fan": await self.controller.get_fan_frequency(),
+                    "tel_extraction_fan": new_fan_frequency,
                 }
                 await self.respond(
                     json.dumps(

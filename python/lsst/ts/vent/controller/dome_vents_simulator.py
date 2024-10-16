@@ -29,7 +29,7 @@ from .config import Config
 
 class DomeVentsSimulator:
     def __init__(self, config: Config):
-        self.input_bits = [0, 0, 0, 0]
+        self.input_bits = [0] * 16
         self.cfg = config
 
         self.http_port = random.randint(1024, 65535)
@@ -72,7 +72,7 @@ class DomeVentsSimulator:
         Raises
         ------
         AssertionError
-            If an invalid channel (outside the range 1 to 4) is requested
+            If an invalid channel (outside the range 1 to 16) is requested
             or the stack index does not match the configured value.
         """
 
@@ -80,7 +80,7 @@ class DomeVentsSimulator:
 
         assert bus_number == self.cfg.sixteen_bus
         assert stack_number == self.cfg.sixteen_stack
-        assert 0 <= channel_number <= 3
+        assert 0 <= channel_number <= 15
         return self.input_bits[channel_number]
 
     def write_channel(
@@ -115,7 +115,7 @@ class DomeVentsSimulator:
 
         assert bus_number == self.cfg.megaind_bus
         assert stack_number == self.cfg.megaind_stack
-        assert 0 <= channel_number <= 3
+        assert 0 <= channel_number <= 15
         assert value == 0 or value == 1
         vent_number_array = [
             i for i in range(4) if self.cfg.vent_signal_ch[i] - 1 == channel_number
@@ -134,7 +134,7 @@ class DomeVentsSimulator:
         Raises
         ------
         AssertionError
-            If input_bits does not have length 4.
+            If input_bits does not have length 16.
         """
-        assert len(input_bits) == 4
-        self.input_bits = input_bits
+        assert len(input_bits) == 16
+        self.input_bits = list(input_bits)

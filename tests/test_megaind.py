@@ -42,13 +42,13 @@ class TestLouvres(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.controller.vent_state(0), VentGateState.CLOSED)
 
     async def test_vent_partiallyopen(self) -> None:
-        self.controller.simulator.set_bits((0, 0, 0, 0))
+        self.controller.simulator.set_bits(tuple([0] * 16))
         self.assertEqual(self.controller.vent_state(0), VentGateState.PARTIALLY_OPEN)
 
     @unittest.expectedFailure
     async def test_vent_invalidstate(self) -> None:
         # There currently is no FAULT attribute in the VentGateState enum
-        self.controller.simulator.set_bits((1, 1, 1, 1))
+        self.controller.simulator.set_bits(tuple([1] * 16))
         self.assertEqual(self.controller.vent_state(0), VentGateState.FAULT)
 
     def test_vent_invalidvent(self) -> None:
@@ -60,6 +60,10 @@ class TestLouvres(unittest.IsolatedAsyncioTestCase):
             self.controller.vent_state(1000000)
 
     async def test_non_configured_vent(self) -> None:
+        self.controller.config.vent_signal_ch[1] = -1
+        self.controller.config.vent_open_limit_ch[1] = -1
+        self.controller.config.vent_close_limit_ch[1] = -1
+
         with self.assertRaises(ValueError):
             self.controller.vent_open(1)
         with self.assertRaises(ValueError):
