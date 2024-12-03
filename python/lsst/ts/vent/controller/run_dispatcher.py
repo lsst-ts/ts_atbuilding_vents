@@ -151,7 +151,11 @@ async def async_main() -> None:
     )
 
     # Keep the event loop running indefinitely.
-    await asyncio.Event().wait()
+    try:
+        while True:
+            await asyncio.sleep(60)
+    except asyncio.CancelledError:
+        log.info("Event loop is stopping.")
 
 
 def main() -> None:
