@@ -330,7 +330,7 @@ class Controller:
             address=vf_drive.Registers.FAULT_REGISTER,
             count=8,
         )
-        return [(r, vf_drive.FAULTS[r]) for r in rvals.registers]
+        return [(r, vf_drive.FAULTS[r]) for r in reversed(rvals.registers)]
 
     def vent_open(self, vent_number: int) -> None:
         """Opens the specified vent.
