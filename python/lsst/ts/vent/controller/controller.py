@@ -137,6 +137,9 @@ class Controller:
         self.log.debug("set vfd_manual_control")
         assert self.connected
         assert self.vfd_client is not None
+
+        await self.set_fan_frequency(0.0)
+
         settings = vf_drive.MANUAL if manual else vf_drive.AUTO
         for address, value in zip(vf_drive.CFG_REGISTERS, settings):
             await self.vfd_client.write_register(
