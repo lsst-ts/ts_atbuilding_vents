@@ -243,6 +243,7 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
         last_fault = None
         fan_drive_state = None
         fan_frequency = None
+        drive_voltage = None
 
         while self.connected:
             try:
@@ -320,11 +321,18 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
             # Send telemetry every TELEMETRY_INTERVAL times through the loop
             self.telemetry_count -= 1
             new_fan_frequency = await self.controller.get_fan_frequency()
-            if self.telemetry_count < 0 or new_fan_frequency != fan_frequency:
+            new_drive_voltage = await self.controller.get_drive_voltage()
+            if (
+                self.telemetry_count < 0
+                or new_fan_frequency != fan_frequency
+                or new_drive_voltage != drive_voltage
+            ):
                 fan_frequency = new_fan_frequency
+                drive_voltage = new_drive_voltage
                 self.telemetry_count = self.TELEMETRY_INTERVAL
                 telemetry = {
                     "tel_extraction_fan": new_fan_frequency,
+                    "tel_drive_voltage": new_drive_voltage,
                 }
                 await self.respond(
                     json.dumps(

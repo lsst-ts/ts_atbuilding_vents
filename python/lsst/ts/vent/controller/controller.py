@@ -297,6 +297,30 @@ class Controller:
             return FanDriveState.OPERATING
         return FanDriveState.FAULT
 
+    async def get_drive_voltage(self) -> float:
+        """Returns the target frequency configured in the drive.
+
+        Raises
+        ------
+        AssertionError
+            If the controller is not connected.
+
+        ModbusException
+            If a communications error occurs.
+        """
+
+        self.log.debug("get drive_voltage")
+        assert self.connected
+        assert self.vfd_client is not None
+
+        drive_voltage = (
+            await self.vfd_client.read_holding_registers(
+                slave=self.config.device_id, address=vf_drive.Registers.ULN_REGISTER
+            )
+        ).registers[0]
+        drive_voltage *= 0.1  # ULN register holds voltage in units of 0.1 V
+        return drive_voltage
+
     async def last8faults(self) -> list[tuple[int, str]]:
         """Returns the last eight fault conditions recorded by the drive.
 
