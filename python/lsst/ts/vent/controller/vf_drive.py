@@ -23,6 +23,7 @@ from enum import IntEnum
 
 
 class Registers(IntEnum):
+    RFR_REGISTER = 3202
     SLL_REGISTER = 7010
     RSF_REGISTER = 7124
     FAULT_REGISTER = 7201

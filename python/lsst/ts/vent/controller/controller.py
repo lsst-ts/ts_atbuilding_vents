@@ -191,20 +191,15 @@ class Controller:
         self.log.debug("get fan_frequency")
         assert self.connected
         assert self.vfd_client is not None
-        cmd = (
-            await self.vfd_client.read_holding_registers(
-                slave=self.config.device_id, address=vf_drive.Registers.CMD_REGISTER
-            )
-        ).registers[0]
-        if cmd == 0:
-            return 0.0
 
-        lfr = (
+        output_frequency = (
             await self.vfd_client.read_holding_registers(
-                slave=self.config.device_id, address=vf_drive.Registers.LFR_REGISTER
+                slave=self.config.device_id, address=vf_drive.Registers.RFR_REGISTER
             )
-        ).registers[0]
-        return 0.1 * lfr
+        ).registers[
+            0
+        ] * 0.1  # RFR register holds frequency in units of 0.1 Hz
+        return output_frequency
 
     async def set_fan_frequency(self, frequency: float) -> None:
         """Sets the target frequency for the dome exhaust fan. The frequency
