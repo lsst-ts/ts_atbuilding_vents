@@ -196,9 +196,8 @@ class Controller:
             await self.vfd_client.read_holding_registers(
                 slave=self.config.device_id, address=vf_drive.Registers.RFR_REGISTER
             )
-        ).registers[
-            0
-        ] * 0.1  # RFR register holds frequency in units of 0.1 Hz
+        ).registers[0]
+        output_frequency *= 0.1  # RFR register holds frequency in units of 0.1 Hz
         return output_frequency
 
     async def set_fan_frequency(self, frequency: float) -> None:

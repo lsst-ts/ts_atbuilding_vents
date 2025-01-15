@@ -22,9 +22,11 @@
 import os
 import random
 
+from pymodbus.datastore.simulator import Cell
 from pymodbus.server import ModbusSimulatorServer
 
 from .config import Config
+from .vf_drive import Registers
 
 
 class DomeVentsSimulator:
@@ -39,6 +41,7 @@ class DomeVentsSimulator:
             http_host="localhost",
             http_port=self.http_port,
             json_file=os.path.dirname(__file__) + "/simulator_setup.json",
+            custom_actions_module=__name__,
         )
 
     async def start(self) -> None:
@@ -138,3 +141,39 @@ class DomeVentsSimulator:
         """
         assert len(input_bits) == 16
         self.input_bits = list(input_bits)
+
+
+def mirror_lfr_action(
+    registers: list[Cell],
+    inx: int,
+    cell: Cell,
+    minval: int | None = None,
+    maxval: int | None = None,
+) -> None:
+    """Custom action for the modbus simulator.
+
+    The RFR register should read the same value as what was written to the
+    LFR register. This custom action is tied to the RFR register
+    to ensure that it behaves as expected.
+
+    Parameters
+    ----------
+    registers: list[Cell]
+        An array of all cells in the simulated modbus server.
+
+    inx: int
+        The index of the cell being read.
+
+    cell: Cell
+        An object representing the cell being read.
+
+    minval: int
+        The minimum allowed value for the cell.
+
+    maxval: int
+        The maximum allowed value for the cell.
+    """
+    cell.value = registers[Registers.LFR_REGISTER].value
+
+
+custom_actions_dict = {"mirror_lfr": mirror_lfr_action}
