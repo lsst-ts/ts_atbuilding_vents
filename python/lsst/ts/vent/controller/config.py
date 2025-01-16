@@ -30,7 +30,7 @@ class Config:
     device_id = 1
     """The default modbus device ID for the variable frequency drive."""
 
-    max_freq = 50.0
+    max_freq = 25.0
     """Default maximum frequency for the dome fans."""
 
     megaind_bus = 1

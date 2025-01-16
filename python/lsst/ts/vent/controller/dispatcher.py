@@ -89,6 +89,7 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
         self.dispatch_dict: Final[dict[str, list[type]]] = {
             "close_vent_gate": [int, int, int, int],
             "open_vent_gate": [int, int, int, int],
+            "get_fan_drive_max_frequency": [],
             "reset_extraction_fan_drive": [],
             "set_extraction_fan_drive_freq": [float],
             "set_extraction_fan_manual_control_mode": [bool],
@@ -164,12 +165,13 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
             # Convert the arguments to their expected type.
             args = [cast_string_to_type(t, arg) for t, arg in zip(types, args)]
             # Call the method with the specified arguments.
-            await getattr(self, command)(*args)
+            return_value = await getattr(self, command)(*args)
             # Send back a success response.
             await self.respond(
                 json.dumps(
                     dict(
                         command=command,
+                        return_value=return_value,
                         error=0,
                         exception_name="",
                         message="",
@@ -210,6 +212,9 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
             else:
                 if gate != -1:
                     raise ValueError(f"Invalid vent ({gate}) must be between 0 and 3.")
+
+    async def get_fan_drive_max_frequency(self) -> float:
+        return self.controller.get_max_frequency()
 
     async def reset_extraction_fan_drive(self) -> None:
         await self.controller.vfd_fault_reset()

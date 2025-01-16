@@ -200,6 +200,14 @@ class Controller:
         output_frequency *= 0.1  # RFR register holds frequency in units of 0.1 Hz
         return output_frequency
 
+    def get_max_frequency(self) -> float:
+        """Returns the maximum allowed frequency.
+
+        Calls to `set_fan_frequency` may not have an argument exceeding
+        this value.
+        """
+        return self.config.max_freq
+
     async def set_fan_frequency(self, frequency: float) -> None:
         """Sets the target frequency for the dome exhaust fan. The frequency
         must be between zero and MAX_FREQ.
