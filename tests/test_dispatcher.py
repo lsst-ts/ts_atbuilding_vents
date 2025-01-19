@@ -23,6 +23,7 @@ import asyncio
 import json
 import logging
 import unittest
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
 from lsst.ts import tcpip
@@ -42,6 +43,8 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
         MockClass = self.patcher.start()
         self.mock_controller = MockClass.return_value
         self.mock_controller.get_fan_manual_control = AsyncMock()
+        self.mock_controller.get_max_frequency = MagicMock(return_value=123.4)
+        self.mock_controller.get_drive_voltage = AsyncMock(return_value=382.9)
         self.mock_controller.fan_manual_control = AsyncMock()
         self.mock_controller.start_fan = AsyncMock()
         self.mock_controller.stop_fan = AsyncMock()
@@ -107,7 +110,7 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
 
     def check_response(
         self, response: str, expected_command: str, expected_error: str | None = None
-    ) -> None:
+    ) -> dict[str, Any]:
         json_data = json.loads(response)
         self.assertEqual(json_data["command"], expected_command)
         if expected_error is None:
@@ -116,6 +119,8 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
             self.assertNotEqual(json_data["error"], 0)
             self.assertEqual(json_data["exception_name"], expected_error)
             self.assertTrue("message" in json_data)
+
+        return json_data
 
     async def test_ping(self) -> None:
         """Check basic functionality with a ping command."""
@@ -216,7 +221,18 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
         response = await self.send_and_receive("", pass_telemetry=True)
         self.check_response(response, "telemetry")
         response = await self.send_and_receive("", pass_telemetry=True)
-        self.check_response(response, "telemetry")
+        json_data = self.check_response(response, "telemetry")
+
+        assert "tel_extraction_fan" in json_data["data"]
+        assert "tel_drive_voltage" in json_data["data"]
+
+        self.assertAlmostEqual(json_data["data"]["tel_extraction_fan"], 0.0)
+        self.assertAlmostEqual(json_data["data"]["tel_drive_voltage"], 382.9, places=2)
+
+    async def test_get_maximum_frequency(self) -> None:
+        response = await self.send_and_receive("get_fan_drive_max_frequency")
+        json_data = self.check_response(response, "get_fan_drive_max_frequency")
+        self.assertAlmostEqual(json_data["return_value"], 123.4, places=1)
 
     async def test_gate_event(self) -> None:
         """Test that an event is emitted when the gate state changes."""
