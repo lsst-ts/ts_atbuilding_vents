@@ -137,6 +137,9 @@ class Controller:
         self.log.debug("set vfd_manual_control")
         assert self.connected
         assert self.vfd_client is not None
+
+        await self.set_fan_frequency(0.0)
+
         settings = vf_drive.MANUAL if manual else vf_drive.AUTO
         for address, value in zip(vf_drive.CFG_REGISTERS, settings):
             await self.vfd_client.write_register(
@@ -188,20 +191,22 @@ class Controller:
         self.log.debug("get fan_frequency")
         assert self.connected
         assert self.vfd_client is not None
-        cmd = (
-            await self.vfd_client.read_holding_registers(
-                slave=self.config.device_id, address=vf_drive.Registers.CMD_REGISTER
-            )
-        ).registers[0]
-        if cmd == 0:
-            return 0.0
 
-        lfr = (
+        output_frequency = (
             await self.vfd_client.read_holding_registers(
-                slave=self.config.device_id, address=vf_drive.Registers.LFR_REGISTER
+                slave=self.config.device_id, address=vf_drive.Registers.RFR_REGISTER
             )
         ).registers[0]
-        return 0.1 * lfr
+        output_frequency *= 0.1  # RFR register holds frequency in units of 0.1 Hz
+        return output_frequency
+
+    def get_max_frequency(self) -> float:
+        """Returns the maximum allowed frequency.
+
+        Calls to `set_fan_frequency` may not have an argument exceeding
+        this value.
+        """
+        return self.config.max_freq
 
     async def set_fan_frequency(self, frequency: float) -> None:
         """Sets the target frequency for the dome exhaust fan. The frequency
@@ -300,6 +305,30 @@ class Controller:
             return FanDriveState.OPERATING
         return FanDriveState.FAULT
 
+    async def get_drive_voltage(self) -> float:
+        """Returns a measurement from the fan motor drive's line voltage.
+
+        Raises
+        ------
+        AssertionError
+            If the controller is not connected.
+
+        ModbusException
+            If a communications error occurs.
+        """
+
+        self.log.debug("get drive_voltage")
+        assert self.connected
+        assert self.vfd_client is not None
+
+        drive_voltage = (
+            await self.vfd_client.read_holding_registers(
+                slave=self.config.device_id, address=vf_drive.Registers.ULN_REGISTER
+            )
+        ).registers[0]
+        drive_voltage *= 0.1  # ULN register holds voltage in units of 0.1 V
+        return drive_voltage
+
     async def last8faults(self) -> list[tuple[int, str]]:
         """Returns the last eight fault conditions recorded by the drive.
 
@@ -327,7 +356,7 @@ class Controller:
             address=vf_drive.Registers.FAULT_REGISTER,
             count=8,
         )
-        return [(r, vf_drive.FAULTS[r]) for r in rvals.registers]
+        return [(r, vf_drive.FAULTS[r]) for r in reversed(rvals.registers)]
 
     def vent_open(self, vent_number: int) -> None:
         """Opens the specified vent.
