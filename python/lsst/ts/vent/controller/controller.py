@@ -306,7 +306,7 @@ class Controller:
         return FanDriveState.FAULT
 
     async def get_drive_voltage(self) -> float:
-        """Returns the target frequency configured in the drive.
+        """Returns a measurement from the fan motor drive's line voltage.
 
         Raises
         ------
