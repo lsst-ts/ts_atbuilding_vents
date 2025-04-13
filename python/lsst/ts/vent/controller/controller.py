@@ -264,16 +264,16 @@ class Controller:
 
     async def get_drive_state(self) -> FanDriveState:
         """Returns the current fan drive state based on the contents
-        of the IPAE register (described as "IPar Status" in the Schneider
-        Electric ATV320 manual). The IPAE register can have the following
-        values:
-         * 0 [Idle State] (IDLE) - Idle State
-         * 1 [Init] (INIT) - Init
-         * 2 [Configuration] (CONF) - Configuration
-         * 3 [Ready] (RDY) - Ready
-         * 4 [Operational] (OPE) - Operational
-         * 5 [Not Configured] (UCFG) - Not Configured
-         * 6 [Unrecoverable Error] (UREC) - Unrecoverable error
+        of the HMIS register. This register may have a number of
+        possible values, most of which should never be encountered
+        in operation of the drive. We interpret this register as
+        follows based on real-world observations of the drive
+
+         * A value of 4 (Drive running), 5 (Drive accelerating), or
+           6 (Drive decelerating) corresponds to
+           FanDriveState.OPERATING
+         * A value of 2 (Drive ready) corresponds to FanDriveState.STOPPED
+         * All other values correspond to FanDriveState.FAULT
 
         Raises
         ------
@@ -287,21 +287,20 @@ class Controller:
         -------
         `FanDriveState`
             The current fan drive state based on the contents of the
-            IPAE register (described as "IPar Status" in the Schneider
-            Electric ATV320 manual).
+            ATV320 HMIS register.
         """
 
         assert self.connected
         assert self.vfd_client is not None
-        ipae = (
+        hmis = (
             await self.vfd_client.read_holding_registers(
-                slave=self.config.device_id, address=vf_drive.Registers.IPAE_REGISTER
+                slave=self.config.device_id, address=vf_drive.Registers.HMIS_REGISTER
             )
         ).registers[0]
 
-        if ipae in (0, 1, 2, 3, 5):
+        if hmis in (4, 5, 6):
             return FanDriveState.STOPPED
-        if ipae == 4:
+        if hmis == 2:
             return FanDriveState.OPERATING
         return FanDriveState.FAULT
 
