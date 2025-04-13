@@ -25,6 +25,7 @@ from enum import IntEnum
 class Registers(IntEnum):
     RFR_REGISTER = 3202
     ULN_REGISTER = 3207
+    HMIS_REGISTER = 3240
     SLL_REGISTER = 7010
     RSF_REGISTER = 7124
     FAULT_REGISTER = 7201
@@ -34,7 +35,6 @@ class Registers(IntEnum):
     CMD_REGISTER = 8501
     LFR_REGISTER = 8502
     LFRD_REGISTER = 8602
-    IPAE_REGISTER = 64279
 
 
 # Manual / auto settings for the variable frequency drive:
