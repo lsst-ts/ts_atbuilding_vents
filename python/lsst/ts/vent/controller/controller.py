@@ -102,7 +102,7 @@ class Controller:
             [
                 (
                     await self.vfd_client.read_holding_registers(
-                        slave=self.config.device_id, address=addr
+                        device_id=self.config.device_id, address=addr
                     )
                 ).registers[0]
                 for addr in vf_drive.CFG_REGISTERS
@@ -143,7 +143,7 @@ class Controller:
         settings = vf_drive.MANUAL if manual else vf_drive.AUTO
         for address, value in zip(vf_drive.CFG_REGISTERS, settings):
             await self.vfd_client.write_register(
-                slave=self.config.device_id, address=address, value=value
+                device_id=self.config.device_id, address=address, value=value
             )
 
     async def start_fan(self) -> None:
@@ -194,7 +194,7 @@ class Controller:
 
         output_frequency = (
             await self.vfd_client.read_holding_registers(
-                slave=self.config.device_id, address=vf_drive.Registers.RFR_REGISTER
+                device_id=self.config.device_id, address=vf_drive.Registers.RFR_REGISTER
             )
         ).registers[0]
         output_frequency *= 0.1  # RFR register holds frequency in units of 0.1 Hz
@@ -240,7 +240,7 @@ class Controller:
         }
         for address, value in settings.items():
             await self.vfd_client.write_register(
-                slave=self.config.device_id, address=address, value=value
+                device_id=self.config.device_id, address=address, value=value
             )
 
     async def vfd_fault_reset(self) -> None:
@@ -259,7 +259,7 @@ class Controller:
         assert self.vfd_client is not None
         for address, value in vf_drive.FAULT_RESET_SEQUENCE:
             await self.vfd_client.write_register(
-                slave=self.config.device_id, address=address, value=value
+                device_id=self.config.device_id, address=address, value=value
             )
 
     async def get_drive_state(self) -> FanDriveState:
@@ -294,7 +294,8 @@ class Controller:
         assert self.vfd_client is not None
         hmis = (
             await self.vfd_client.read_holding_registers(
-                slave=self.config.device_id, address=vf_drive.Registers.HMIS_REGISTER
+                device_id=self.config.device_id,
+                address=vf_drive.Registers.HMIS_REGISTER,
             )
         ).registers[0]
 
@@ -322,7 +323,7 @@ class Controller:
 
         drive_voltage = (
             await self.vfd_client.read_holding_registers(
-                slave=self.config.device_id, address=vf_drive.Registers.ULN_REGISTER
+                device_id=self.config.device_id, address=vf_drive.Registers.ULN_REGISTER
             )
         ).registers[0]
         drive_voltage *= 0.1  # ULN register holds voltage in units of 0.1 V
@@ -351,7 +352,7 @@ class Controller:
         assert self.connected
         assert self.vfd_client is not None
         rvals = await self.vfd_client.read_holding_registers(
-            slave=self.config.device_id,
+            device_id=self.config.device_id,
             address=vf_drive.Registers.FAULT_REGISTER,
             count=8,
         )
