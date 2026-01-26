@@ -1,3 +1,12 @@
+v0.1.4 (2026-01-26)
+===================
+
+New Features
+------------
+
+- Updated pin on pymodbus. (`OSW-1727 <https://rubinobs.atlassian.net//browse/OSW-1727>`_)
+
+
 v0.1.3 (2026-01-23)
 ===================
 
