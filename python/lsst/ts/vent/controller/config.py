@@ -30,6 +30,37 @@ class Config:
     device_id = 1
     """The default modbus device ID for the variable frequency drive."""
 
+    modbus_timeout = 1.0
+    """Timeout, in seconds, for a single modbus transaction.
+
+    This is deliberately shorter than the pymodbus default of 3 seconds:
+    ``Dispatcher.monitor_status`` polls the drive ten times per second, so a
+    long timeout would cause polls to queue up behind an unresponsive drive.
+    """
+
+    modbus_retries = 3
+    """Number of times pymodbus retries a single modbus transaction."""
+
+    reconnect_delay = 0.1
+    """Initial delay, in seconds, before pymodbus retries a lost connection.
+
+    pymodbus doubles this delay after each failed attempt, up to
+    `reconnect_delay_max`. Set to 0 to disable automatic reconnection.
+    """
+
+    reconnect_delay_max = 60.0
+    """Maximum delay, in seconds, between pymodbus reconnection attempts."""
+
+    connect_max_time = 300.0
+    """How long, in seconds, `Controller.connect` retries the initial
+    connection to the variable frequency drive before giving up.
+
+    pymodbus only reconnects automatically once a connection has been
+    established and then lost; it does not retry the initial connection. This
+    covers the case where the drive is not yet powered up when the controller
+    starts.
+    """
+
     max_freq = 50.0
     """Default maximum frequency for the dome fans."""
 

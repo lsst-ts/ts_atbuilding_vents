@@ -20,13 +20,16 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import logging
+import typing
 
+import backoff
 from lsst.ts.xml.enums.ATBuilding import FanDriveState, VentGateState
 from pymodbus.client import AsyncModbusTcpClient
+from pymodbus.exceptions import ConnectionException, ModbusException
 
 from . import sequent, vf_drive
 from .config import Config
-from .dome_vents_simulator import DomeVentsSimulator
+from .dome_vents_simulator import SIMULATOR_MODBUS_PORT, DomeVentsSimulator
 
 __all__ = ["Controller"]
 
@@ -44,24 +47,86 @@ class Controller:
         self.log = logging.getLogger(type(self).__name__)
         self.simulator = DomeVentsSimulator(self.config) if simulate else None
         self.vfd_client: None | AsyncModbusTcpClient = None
-        self.connected = False
+
+        if simulate:
+            # The simulated drive always listens on localhost at a fixed port,
+            # so point the configuration at it rather than making every caller
+            # remember to do so.
+            self.config.hostname = "localhost"
+            self.config.port = SIMULATOR_MODBUS_PORT
+
+    @property
+    def connected(self) -> bool:
+        """Whether there is a live modbus connection to the variable
+        frequency drive.
+
+        This reflects the actual state of the socket, so it becomes False if
+        the drive drops off the network and True again once pymodbus has
+        reconnected.
+        """
+        return self.vfd_client is not None and self.vfd_client.connected
+
+    def _log_connect_retry(self, details: typing.Mapping[str, typing.Any]) -> None:
+        """Logs a failed attempt to connect to the variable frequency drive."""
+        self.log.warning(
+            f"Failed to connect to the variable frequency drive at "
+            f"{self.config.hostname}:{self.config.port} after "
+            f"{details['tries']} attempt(s). "
+            f"Retrying in {details['wait']:.1f} seconds."
+        )
 
     async def connect(self) -> None:
         """Connects to the variable frequency drive via modbus.
 
+        The initial connection is retried with exponential backoff for up to
+        ``config.connect_max_time`` seconds, so that the controller can start
+        before the drive is powered up. Once a connection has been
+        established, pymodbus reconnects automatically if it is lost, so the
+        retry here applies only to the initial connection.
+
         Raises
         ------
-        ModbusException
-            If the variable frequency drive is not available.
+        ConnectionException
+            If the variable frequency drive cannot be reached before
+            ``config.connect_max_time`` elapses.
         """
         if self.simulator is not None:
             await self.simulator.start()
 
         self.vfd_client = AsyncModbusTcpClient(
-            self.config.hostname, port=self.config.port
+            self.config.hostname,
+            port=self.config.port,
+            timeout=self.config.modbus_timeout,
+            retries=self.config.modbus_retries,
+            reconnect_delay=self.config.reconnect_delay,
+            reconnect_delay_max=self.config.reconnect_delay_max,
         )
-        await self.vfd_client.connect()
-        self.connected = True
+
+        # pymodbus signals a failed connection by returning False rather than
+        # raising, so retry on the return value. The decorator is applied here
+        # rather than to a method so that it can read the retry limit from the
+        # configuration.
+        @backoff.on_predicate(
+            backoff.expo,
+            max_time=self.config.connect_max_time,
+            jitter=backoff.full_jitter,
+            on_backoff=self._log_connect_retry,
+        )
+        async def connect_once() -> bool:
+            assert self.vfd_client is not None
+            return await self.vfd_client.connect()
+
+        if not await connect_once():
+            raise ConnectionException(
+                f"Could not connect to the variable frequency drive at "
+                f"{self.config.hostname}:{self.config.port} after "
+                f"{self.config.connect_max_time} seconds."
+            )
+
+        self.log.info(
+            f"Connected to the variable frequency drive at "
+            f"{self.config.hostname}:{self.config.port}."
+        )
 
     async def stop(self) -> None:
         """Disconnects from the variable frequency drive, and stops
@@ -72,6 +137,72 @@ class Controller:
 
         if self.vfd_client is not None:
             self.vfd_client.close()
+
+    async def read_registers(self, address: int, count: int = 1) -> list[int]:
+        """Reads one or more holding registers from the variable frequency
+        drive.
+
+        pymodbus reports a modbus protocol error (an illegal address, say) by
+        returning an ``ExceptionResponse`` rather than by raising, and that
+        response has no ``registers`` attribute. Checking here means callers
+        see a `ModbusException` rather than an `AttributeError`.
+
+        Parameters
+        ----------
+        address : int
+            The address of the first register to read.
+
+        count : int
+            The number of consecutive registers to read.
+
+        Returns
+        -------
+        list[int]
+            The contents of the registers read.
+
+        Raises
+        ------
+        ModbusException
+            If a communications error occurs, or the drive returns an error
+            response.
+        """
+        assert self.vfd_client is not None
+        response = await self.vfd_client.read_holding_registers(
+            device_id=self.config.device_id, address=address, count=count
+        )
+        if response.isError():
+            raise ModbusException(
+                f"Error reading {count} register(s) at address {address} "
+                f"from the variable frequency drive: {response}"
+            )
+        return response.registers
+
+    async def write_register(self, address: int, value: int) -> None:
+        """Writes a single holding register on the variable frequency drive.
+
+        Parameters
+        ----------
+        address : int
+            The address of the register to write.
+
+        value : int
+            The value to write to the register.
+
+        Raises
+        ------
+        ModbusException
+            If a communications error occurs, or the drive returns an error
+            response.
+        """
+        assert self.vfd_client is not None
+        response = await self.vfd_client.write_register(
+            device_id=self.config.device_id, address=address, value=value
+        )
+        if response.isError():
+            raise ModbusException(
+                f"Error writing value {value} to register {address} "
+                f"of the variable frequency drive: {response}"
+            )
 
     async def get_fan_manual_control(self) -> bool:
         """Returns the variable frequency drive setting for manual
@@ -100,11 +231,7 @@ class Controller:
         assert self.vfd_client is not None
         settings = tuple(
             [
-                (
-                    await self.vfd_client.read_holding_registers(
-                        device_id=self.config.device_id, address=addr
-                    )
-                ).registers[0]
+                (await self.read_registers(address=addr))[0]
                 for addr in vf_drive.CFG_REGISTERS
             ]
         )
@@ -142,9 +269,7 @@ class Controller:
 
         settings = vf_drive.MANUAL if manual else vf_drive.AUTO
         for address, value in zip(vf_drive.CFG_REGISTERS, settings):
-            await self.vfd_client.write_register(
-                device_id=self.config.device_id, address=address, value=value
-            )
+            await self.write_register(address=address, value=value)
 
     async def start_fan(self) -> None:
         """Starts the dome exhaust fan
@@ -192,11 +317,9 @@ class Controller:
         assert self.connected
         assert self.vfd_client is not None
 
-        output_frequency = (
-            await self.vfd_client.read_holding_registers(
-                device_id=self.config.device_id, address=vf_drive.Registers.RFR_REGISTER
-            )
-        ).registers[0]
+        output_frequency = float(
+            (await self.read_registers(address=vf_drive.Registers.RFR_REGISTER))[0]
+        )
         output_frequency *= 0.1  # RFR register holds frequency in units of 0.1 Hz
         return output_frequency
 
@@ -239,9 +362,7 @@ class Controller:
             vf_drive.Registers.LFR_REGISTER: round(frequency * 10),
         }
         for address, value in settings.items():
-            await self.vfd_client.write_register(
-                device_id=self.config.device_id, address=address, value=value
-            )
+            await self.write_register(address=address, value=value)
 
     async def vfd_fault_reset(self) -> None:
         """Resets a fault condition on the drive so that it will operate again.
@@ -258,9 +379,7 @@ class Controller:
         assert self.connected
         assert self.vfd_client is not None
         for address, value in vf_drive.FAULT_RESET_SEQUENCE:
-            await self.vfd_client.write_register(
-                device_id=self.config.device_id, address=address, value=value
-            )
+            await self.write_register(address=address, value=value)
 
     async def get_drive_state(self) -> FanDriveState:
         """Returns the current fan drive state based on the contents
@@ -292,12 +411,7 @@ class Controller:
 
         assert self.connected
         assert self.vfd_client is not None
-        hmis = (
-            await self.vfd_client.read_holding_registers(
-                device_id=self.config.device_id,
-                address=vf_drive.Registers.HMIS_REGISTER,
-            )
-        ).registers[0]
+        hmis = (await self.read_registers(address=vf_drive.Registers.HMIS_REGISTER))[0]
 
         if hmis in (4, 5, 6):
             return FanDriveState.STOPPED
@@ -321,11 +435,9 @@ class Controller:
         assert self.connected
         assert self.vfd_client is not None
 
-        drive_voltage = (
-            await self.vfd_client.read_holding_registers(
-                device_id=self.config.device_id, address=vf_drive.Registers.ULN_REGISTER
-            )
-        ).registers[0]
+        drive_voltage = float(
+            (await self.read_registers(address=vf_drive.Registers.ULN_REGISTER))[0]
+        )
         drive_voltage *= 0.1  # ULN register holds voltage in units of 0.1 V
         return drive_voltage
 
@@ -351,12 +463,10 @@ class Controller:
         self.log.debug("last8faults")
         assert self.connected
         assert self.vfd_client is not None
-        rvals = await self.vfd_client.read_holding_registers(
-            device_id=self.config.device_id,
-            address=vf_drive.Registers.FAULT_REGISTER,
-            count=8,
+        rvals = await self.read_registers(
+            address=vf_drive.Registers.FAULT_REGISTER, count=8
         )
-        return [(r, vf_drive.FAULTS[r]) for r in reversed(rvals.registers)]
+        return [(r, vf_drive.FAULTS[r]) for r in reversed(rvals)]
 
     def vent_open(self, vent_number: int) -> None:
         """Opens the specified vent.
