@@ -100,9 +100,11 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
         self.controller = controller if controller is not None else Controller()
 
         self.monitor_sleep_task = utils.make_done_future()
+        self.monitor_status_task = utils.make_done_future()
 
         self.telemetry_count = 0
         self.TELEMETRY_INTERVAL = 100
+        self.MONITOR_INTERVAL = 0.1
 
         super().__init__(
             port=port,
@@ -239,9 +241,27 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
     async def on_connect(self, bcs: tcpip.BaseClientOrServer) -> None:
         if self.connected:
             self.log.info("Connected to client.")
-            asyncio.create_task(self.monitor_status())
+            self.monitor_status_task = asyncio.create_task(self.monitor_status())
+            self.monitor_status_task.add_done_callback(self.monitor_status_done)
         else:
             self.log.info("Disconnected from client.")
+
+    def monitor_status_done(self, task: asyncio.Future) -> None:
+        """Logs the outcome of the status monitor task.
+
+        Without this, an exception escaping `monitor_status` would leave the
+        client connected but receiving no further events or telemetry, with
+        nothing in the log to explain why.
+        """
+        if task.cancelled():
+            self.log.info("Status monitor cancelled.")
+        elif task.exception() is not None:
+            self.log.error(
+                "Status monitor stopped by an unhandled exception.",
+                exc_info=task.exception(),
+            )
+        else:
+            self.log.debug("Status monitor stopped.")
 
     async def monitor_status(self) -> None:
         vent_state = None
@@ -265,9 +285,12 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
                 ]  # controller.last8faults returns tuple[int, str]
 
                 new_fan_drive_state = await self.controller.get_drive_state()
-            except Exception as e:
-                self.log.exception(e)
-                # Do not re-raise, so that the loop will continue
+            except Exception:
+                self.log.exception("Error while polling the controller for status.")
+                # Do not re-raise, so that the loop will continue, but skip the
+                # rest of this iteration to avoid stale readings.
+                await self.monitor_sleep()
+                continue
 
             # Check whether the vent state has changed
             if vent_state != new_vent_state:
@@ -352,8 +375,18 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
                     )
                 )
 
-            try:
-                self.monitor_sleep_task = asyncio.ensure_future(asyncio.sleep(0.1))
-                await self.monitor_sleep_task
-            except asyncio.CancelledError:
-                continue
+            await self.monitor_sleep()
+
+    async def monitor_sleep(self) -> None:
+        """Waits for one polling interval.
+
+        The sleep is held in `monitor_sleep_task` so that it can be
+        cancelled to wake the monitor loop immediately.
+        """
+        try:
+            self.monitor_sleep_task = asyncio.ensure_future(
+                asyncio.sleep(self.MONITOR_INTERVAL)
+            )
+            await self.monitor_sleep_task
+        except asyncio.CancelledError:
+            pass
