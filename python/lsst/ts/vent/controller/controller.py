@@ -414,9 +414,9 @@ class Controller:
         hmis = (await self.read_registers(address=vf_drive.Registers.HMIS_REGISTER))[0]
 
         if hmis in (4, 5, 6):
-            return FanDriveState.STOPPED
-        if hmis == 2:
             return FanDriveState.OPERATING
+        if hmis == 2:
+            return FanDriveState.STOPPED
         return FanDriveState.FAULT
 
     async def get_drive_voltage(self) -> float:
@@ -466,7 +466,10 @@ class Controller:
         rvals = await self.read_registers(
             address=vf_drive.Registers.FAULT_REGISTER, count=8
         )
-        return [(r, vf_drive.FAULTS[r]) for r in reversed(rvals)]
+        return [
+            (r, vf_drive.FAULTS.get(r, f"Unknown fault code {r}"))
+            for r in reversed(rvals)
+        ]
 
     def vent_open(self, vent_number: int) -> None:
         """Opens the specified vent.
