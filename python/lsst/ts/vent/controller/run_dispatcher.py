@@ -22,6 +22,7 @@
 import argparse
 import asyncio
 import logging
+import sys
 
 from .config import Config
 from .controller import Controller
@@ -112,6 +113,15 @@ def parse_args() -> argparse.Namespace:
         help="Enable simulation mode.",
     )
 
+    parser.add_argument(
+        "--log-level",
+        type=str.upper,
+        default="INFO",
+        choices=("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"),
+        help="Logging level. Note that DEBUG is verbose, as the status "
+        "monitor polls the hardware ten times per second.",
+    )
+
     return parser.parse_args()
 
 
@@ -124,8 +134,12 @@ async def async_main() -> None:
 
     """
     args = parse_args()
+    logging.basicConfig(
+        level=args.log_level,
+        format="%(asctime)s %(name)s %(levelname)s %(message)s",
+        stream=sys.stdout,
+    )
     log = logging.getLogger()
-    log.setLevel(logging.DEBUG)
 
     # Set up configuration
     cfg = Config()
