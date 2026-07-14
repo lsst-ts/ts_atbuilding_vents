@@ -9,7 +9,7 @@ license = { text = "GPL" }
 classifiers = [ "Programming Language :: Python :: 3" ]
 urls = { source_code = "https://github.com/lsst-ts/ts_atbuilding_vents"}
 dynamic = ["version"]
-dependencies = [ "pymodbus", "smbus3" ]
+dependencies = [ "backoff", "pymodbus", "smbus3" ]
 
 [tool.setuptools.dynamic]
 version = { attr = "setuptools_scm.get_version" }

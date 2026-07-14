@@ -153,9 +153,6 @@ async def async_main() -> None:
     cfg.sixteen_stack = args.sixteen_stack_level
 
     # Set up controller
-    if args.simulate:
-        cfg.hostname = "localhost"
-        cfg.port = 26034
     controller = Controller(cfg, simulate=args.simulate)
     await controller.connect()
 
