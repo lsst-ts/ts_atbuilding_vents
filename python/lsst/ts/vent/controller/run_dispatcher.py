@@ -157,16 +157,20 @@ async def async_main() -> None:
     await controller.connect()
 
     # Set up dispatcher and attach controller
-    dispatcher = Dispatcher(  # noqa: F841
-        port=args.port, log=log, controller=controller
-    )
+    dispatcher = Dispatcher(port=args.port, log=log, controller=controller)
 
-    # Keep the event loop running indefinitely.
     try:
+        await dispatcher.start_task
+        log.info(f"Listening for commands on port {args.port}.")
+
+        # Keep the event loop running indefinitely.
         while True:
             await asyncio.sleep(60)
     except asyncio.CancelledError:
         log.info("Event loop is stopping.")
+    finally:
+        await dispatcher.close()
+        await controller.stop()
 
 
 def main() -> None:
