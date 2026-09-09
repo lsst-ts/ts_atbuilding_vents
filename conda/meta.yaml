@@ -19,6 +19,7 @@ test:
     - ts-xml
     - smbus3 0.5.5
     - pymodbus >=3.11
+    - backoff >=2.2
   source_files:
     - python
     - tests
@@ -45,3 +46,4 @@ requirements:
     - ts-xml
     - pymodbus 3.11
     - smbus3 0.5.5
+    - backoff >=2.2

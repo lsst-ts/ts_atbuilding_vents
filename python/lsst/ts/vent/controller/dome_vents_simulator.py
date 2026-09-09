@@ -28,6 +28,13 @@ from pymodbus.server import ModbusSimulatorServer
 from .config import Config
 from .vf_drive import Registers
 
+SIMULATOR_MODBUS_PORT = 26034
+"""The TCP port the simulated variable frequency drive listens on.
+
+This must match the port in ``simulator_setup.json``, which is where the
+simulator itself reads it from.
+"""
+
 
 class DomeVentsSimulator:
     def __init__(self, config: Config):
