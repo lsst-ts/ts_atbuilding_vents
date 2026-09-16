@@ -22,6 +22,7 @@
 import argparse
 import asyncio
 import logging
+import sys
 
 from .config import Config
 from .controller import Controller
@@ -112,6 +113,15 @@ def parse_args() -> argparse.Namespace:
         help="Enable simulation mode.",
     )
 
+    parser.add_argument(
+        "--log-level",
+        type=str.upper,
+        default="INFO",
+        choices=("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"),
+        help="Logging level. Note that DEBUG is verbose, as the status "
+        "monitor polls the hardware ten times per second.",
+    )
+
     return parser.parse_args()
 
 
@@ -124,8 +134,12 @@ async def async_main() -> None:
 
     """
     args = parse_args()
+    logging.basicConfig(
+        level=args.log_level,
+        format="%(asctime)s %(name)s %(levelname)s %(message)s",
+        stream=sys.stdout,
+    )
     log = logging.getLogger()
-    log.setLevel(logging.DEBUG)
 
     # Set up configuration
     cfg = Config()
@@ -139,23 +153,24 @@ async def async_main() -> None:
     cfg.sixteen_stack = args.sixteen_stack_level
 
     # Set up controller
-    if args.simulate:
-        cfg.hostname = "localhost"
-        cfg.port = 26034
     controller = Controller(cfg, simulate=args.simulate)
     await controller.connect()
 
     # Set up dispatcher and attach controller
-    dispatcher = Dispatcher(  # noqa: F841
-        port=args.port, log=log, controller=controller
-    )
+    dispatcher = Dispatcher(port=args.port, log=log, controller=controller)
 
-    # Keep the event loop running indefinitely.
     try:
+        await dispatcher.start_task
+        log.info(f"Listening for commands on port {args.port}.")
+
+        # Keep the event loop running indefinitely.
         while True:
             await asyncio.sleep(60)
     except asyncio.CancelledError:
         log.info("Event loop is stopping.")
+    finally:
+        await dispatcher.close()
+        await controller.stop()
 
 
 def main() -> None:
