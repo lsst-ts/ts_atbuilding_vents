@@ -93,35 +93,41 @@ class Controller:
         if self.simulator is not None:
             await self.simulator.start()
 
-        self.vfd_client = AsyncModbusTcpClient(
-            self.config.hostname,
-            port=self.config.port,
-            timeout=self.config.modbus_timeout,
-            retries=self.config.modbus_retries,
-            reconnect_delay=self.config.reconnect_delay,
-            reconnect_delay_max=self.config.reconnect_delay_max,
-        )
-
-        # pymodbus signals a failed connection by returning False rather than
-        # raising, so retry on the return value. The decorator is applied here
-        # rather than to a method so that it can read the retry limit from the
-        # configuration.
-        @backoff.on_predicate(
-            backoff.expo,
-            max_time=self.config.connect_max_time,
-            jitter=backoff.full_jitter,
-            on_backoff=self._log_connect_retry,
-        )
-        async def connect_once() -> bool:
-            assert self.vfd_client is not None
-            return await self.vfd_client.connect()
-
-        if not await connect_once():
-            raise ConnectionException(
-                f"Could not connect to the variable frequency drive at "
-                f"{self.config.hostname}:{self.config.port} after "
-                f"{self.config.connect_max_time} seconds."
+        try:
+            self.vfd_client = AsyncModbusTcpClient(
+                self.config.hostname,
+                port=self.config.port,
+                timeout=self.config.modbus_timeout,
+                retries=self.config.modbus_retries,
+                reconnect_delay=self.config.reconnect_delay,
+                reconnect_delay_max=self.config.reconnect_delay_max,
             )
+
+            # pymodbus signals a failed connection by returning False rather
+            # than raising, so retry on the return value. The decorator is
+            # applied here rather than to a method so that it can read the
+            # retry limit from the configuration.
+            @backoff.on_predicate(
+                backoff.expo,
+                max_time=self.config.connect_max_time,
+                jitter=backoff.full_jitter,
+                on_backoff=self._log_connect_retry,
+            )
+            async def connect_once() -> bool:
+                assert self.vfd_client is not None
+                return await self.vfd_client.connect()
+
+            if not await connect_once():
+                raise ConnectionException(
+                    f"Could not connect to the variable frequency drive at "
+                    f"{self.config.hostname}:{self.config.port} after "
+                    f"{self.config.connect_max_time} seconds."
+                )
+        except BaseException:
+            # If anything raises in this block, the simulated modbus server
+            # is still running and needs to be stopped manually.
+            await self.stop()
+            raise
 
         self.log.info(
             f"Connected to the variable frequency drive at "
