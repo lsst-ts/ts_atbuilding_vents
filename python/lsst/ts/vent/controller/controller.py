@@ -23,9 +23,10 @@ import logging
 import typing
 
 import backoff
-from lsst.ts.xml.enums.ATBuilding import FanDriveState, VentGateState
 from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import ConnectionException, ModbusException
+
+from lsst.ts.xml.enums.ATBuilding import FanDriveState, VentGateState
 
 from . import sequent, vf_drive
 from .config import Config

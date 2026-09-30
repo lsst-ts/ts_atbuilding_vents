@@ -43,8 +43,9 @@
 import socket
 import unittest
 
-from lsst.ts.vent.controller import Config, Controller
 from pymodbus.exceptions import ConnectionException
+
+from lsst.ts.vent.controller import Config, Controller
 
 # How long to let `Controller.connect` retry before giving up, in seconds.
 # The production default is five minutes, which is far too long for a test.

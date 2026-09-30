@@ -26,7 +26,7 @@ For more information, see:
 https://developer.lsst.io/stack/building-single-package-docs.html
 """
 
-from documenteer.conf.pipelinespkg import *
+from documenteer.conf.pipelinespkg import *  # noqa
 
 project = "ts_vent_controller"
 html_theme_options["logotext"] = project  # type: ignore # noqa
