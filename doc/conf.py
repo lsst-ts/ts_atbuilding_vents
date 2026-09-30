@@ -22,6 +22,6 @@
 import lsst.ts.vent.controller  # noqa
 from documenteer.conf.guide import *  # noqa
 
-project = "ts_vent_controller"
+project = "ts_atbuilding_vents"
 html_title = project
 html_short_title = project
