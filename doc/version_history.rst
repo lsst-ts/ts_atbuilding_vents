@@ -1,3 +1,13 @@
+.. py:currentmodule:: lsst.ts.vent.controller
+
+.. _lsst.ts.vent.controller.version_history:
+
+###############
+Version History
+###############
+
+.. towncrier release notes start
+
 v0.1.4 (2026-01-26)
 ===================
 

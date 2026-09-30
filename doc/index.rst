@@ -23,7 +23,7 @@ lsst.ts.vent.controller
 Contributing
 ============
 
-``lsst.ts.vent.controller`` is developed at https://github.com/lsst-ts/ts_vent_controller.
+``lsst.ts.vent.controller`` is developed at https://github.com/lsst-ts/ts_atbuilding_vents.
 You can find Jira issues for this module under the `ts_vent_controller <https://jira.lsstcorp.org/issues/?jql=project%20%3D%20DM%20AND%20component%20%3D%20ts_vent_controller>`_ component.
 
 .. If there are topics related to developing this module (rather than using it), link to this from a toctree placed here.
@@ -40,6 +40,15 @@ You can find Jira issues for this module under the `ts_vent_controller <https://
 
 .. .. toctree::
 ..    :maxdepth: 1
+
+.. _lsst.ts.vent.controller-version_history:
+
+Version History
+===============
+
+.. toctree::
+   version_history
+   :maxdepth: 1
 
 .. .. _lsst.ts.vent.controller-pyapi:
 
