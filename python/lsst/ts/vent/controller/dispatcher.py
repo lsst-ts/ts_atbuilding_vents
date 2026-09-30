@@ -62,9 +62,7 @@ def cast_string_to_type(new_type: Type[T], value: str) -> T:
         elif value.lower() in ("false", "f", "0"):
             return new_type(False)
         raise ValueError(
-            "Expected bool value "
-            + "('true', 't', '1', 'false', 'f', '0')"
-            + " but got {value}"
+            "Expected bool value " + "('true', 't', '1', 'false', 'f', '0')" + " but got {value}"
         )
     return new_type(value)
 
@@ -83,9 +81,7 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
     And responses take the form of JSON.
     """
 
-    def __init__(
-        self, port: int, log: logging.Logger, controller: Controller | None = None
-    ):
+    def __init__(self, port: int, log: logging.Logger, controller: Controller | None = None):
         self.dispatch_dict: Final[dict[str, list[type]]] = {
             "close_vent_gate": [int, int, int, int],
             "open_vent_gate": [int, int, int, int],
@@ -125,9 +121,7 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
 
         self.log.debug(f"Received command: {data!r}")
 
-        command, *args = (
-            data.split()
-        )  # Tokenize the command and break out the first word as the method.
+        command, *args = data.split()  # Tokenize the command and break out the first word as the method.
         if command not in self.dispatch_dict:
             # If the command string is not in the dictionary, send back an
             # error and do nothing.
@@ -194,9 +188,7 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
                 )
             )
 
-    async def close_vent_gate(
-        self, gate0: int, gate1: int, gate2: int, gate3: int
-    ) -> None:
+    async def close_vent_gate(self, gate0: int, gate1: int, gate2: int, gate3: int) -> None:
         for gate in (gate0, gate1, gate2, gate3):
             if gate >= 0 and gate <= 3:
                 self.controller.vent_close(gate)
@@ -204,9 +196,7 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
                 if gate != -1:
                     raise ValueError(f"Invalid vent ({gate}) must be between 0 and 3.")
 
-    async def open_vent_gate(
-        self, gate0: int, gate1: int, gate2: int, gate3: int
-    ) -> None:
+    async def open_vent_gate(self, gate0: int, gate1: int, gate2: int, gate3: int) -> None:
         for gate in (gate0, gate1, gate2, gate3):
             if gate >= 0 and gate <= 3:
                 self.controller.vent_open(gate)
@@ -223,9 +213,7 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
     async def set_extraction_fan_drive_freq(self, target_frequency: float) -> None:
         await self.controller.set_fan_frequency(target_frequency)
 
-    async def set_extraction_fan_manual_control_mode(
-        self, enable_manual_control_mode: bool
-    ) -> None:
+    async def set_extraction_fan_manual_control_mode(self, enable_manual_control_mode: bool) -> None:
         await self.controller.fan_manual_control(enable_manual_control_mode)
 
     async def start_extraction_fan(self) -> None:
@@ -289,9 +277,7 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
                         # Ignore non-configured vents
                         pass
                 last8faults = await self.controller.last8faults()
-                new_last_fault = last8faults[0][
-                    0
-                ]  # controller.last8faults returns tuple[int, str]
+                new_last_fault = last8faults[0][0]  # controller.last8faults returns tuple[int, str]
 
                 new_fan_drive_state = await self.controller.get_drive_state()
                 new_fan_frequency = await self.controller.get_fan_frequency()
@@ -340,9 +326,7 @@ class Dispatcher(tcpip.OneClientReadLoopServer):
 
             # Check whether the fan drive state has changed
             if fan_drive_state != new_fan_drive_state:
-                self.log.debug(
-                    f"Fan drive state changed: {fan_drive_state} -> {new_fan_drive_state}"
-                )
+                self.log.debug(f"Fan drive state changed: {fan_drive_state} -> {new_fan_drive_state}")
                 await self.respond(
                     json.dumps(
                         dict(

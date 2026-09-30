@@ -25,7 +25,6 @@ from lsst.ts.vent.controller import Config, Controller
 
 
 class TestFan(unittest.IsolatedAsyncioTestCase):
-
     async def asyncSetUp(self) -> None:
         cfg = Config()
         cfg.hostname = "localhost"

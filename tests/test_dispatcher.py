@@ -59,16 +59,12 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
 
         self.mock_controller.get_fan_manual_control.return_value = False
         self.mock_controller.get_fan_frequency.return_value = 0.0
-        self.mock_controller.last8faults.return_value = [
-            (22, "Description of error")
-        ] * 8
+        self.mock_controller.last8faults.return_value = [(22, "Description of error")] * 8
         self.mock_controller.vent_state.return_value = 0
         self.mock_controller.get_drive_state.return_value = FanDriveState.STOPPED
 
         # Build the dispatcher and wait for it to listen
-        self.dispatcher = Dispatcher(
-            port=1234, log=self.log, controller=self.mock_controller
-        )
+        self.dispatcher = Dispatcher(port=1234, log=self.log, controller=self.mock_controller)
         self.dispatcher.TELEMETRY_INTERVAL = 5
         await self.dispatcher.start_task
 
@@ -89,13 +85,9 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
     async def send_and_receive(
         self, message: str, pass_event: str | None = None, pass_telemetry: bool = False
     ) -> str:
-        await asyncio.wait_for(
-            self.client.write_str(message + "\r\n"), timeout=TCP_TIMEOUT
-        )
+        await asyncio.wait_for(self.client.write_str(message + "\r\n"), timeout=TCP_TIMEOUT)
         for i in range(1000):
-            response = await asyncio.wait_for(
-                self.client.read_str(), timeout=TCP_TIMEOUT
-            )
+            response = await asyncio.wait_for(self.client.read_str(), timeout=TCP_TIMEOUT)
             if "evt_" in response:
                 if pass_event is not None and pass_event in response:
                     break
@@ -143,17 +135,13 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
         """Test close_vent_gate command sending it multiple gates."""
         response = await self.send_and_receive("close_vent_gate 1 2 3 -1")
         self.check_response(response, "close_vent_gate")
-        self.mock_controller.vent_close.assert_has_calls(
-            [call(1), call(2), call(3)], any_order=False
-        )
+        self.mock_controller.vent_close.assert_has_calls([call(1), call(2), call(3)], any_order=False)
 
     async def test_open_vent_multiple(self) -> None:
         """Test open_vent_gate command sending it multiple gates."""
         response = await self.send_and_receive("open_vent_gate -1 1 2 3")
         self.check_response(response, "open_vent_gate")
-        self.mock_controller.vent_open.assert_has_calls(
-            [call(1), call(2), call(3)], any_order=False
-        )
+        self.mock_controller.vent_open.assert_has_calls([call(1), call(2), call(3)], any_order=False)
 
     async def test_reset_extraction_fan_drive(self) -> None:
         """Test reset_extraction_fan_drive command."""
@@ -169,17 +157,13 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
 
     async def test_set_extraction_fan_manual_control_mode_true(self) -> None:
         """Test setExtractionFanManualControlMode with argument True."""
-        response = await self.send_and_receive(
-            "set_extraction_fan_manual_control_mode True"
-        )
+        response = await self.send_and_receive("set_extraction_fan_manual_control_mode True")
         self.check_response(response, "set_extraction_fan_manual_control_mode")
         self.mock_controller.fan_manual_control.assert_called_once_with(True)
 
     async def test_set_extraction_fan_manual_control_mode_false(self) -> None:
         """Test set_extraction_fan_manual_control_mode with argument False."""
-        response = await self.send_and_receive(
-            "set_extraction_fan_manual_control_mode False"
-        )
+        response = await self.send_and_receive("set_extraction_fan_manual_control_mode False")
         self.check_response(response, "set_extraction_fan_manual_control_mode")
         self.mock_controller.fan_manual_control.assert_called_once_with(False)
 
@@ -250,18 +234,12 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
     async def test_drive_fault(self) -> None:
         """Test that a drive fault is emitted."""
         fault_code = self.mock_controller.last8faults.return_value[0][0]
-        response = await self.send_and_receive(
-            "", pass_event="evt_extraction_fan_drive_fault_code"
-        )
+        response = await self.send_and_receive("", pass_event="evt_extraction_fan_drive_fault_code")
         response_json = json.loads(response)
         self.assertEqual(response_json["data"], fault_code)
 
-        self.mock_controller.last8faults.return_value = [
-            (123, "Description of error")
-        ] * 8
+        self.mock_controller.last8faults.return_value = [(123, "Description of error")] * 8
         fault_code = self.mock_controller.last8faults.return_value[0][0]
-        response = await self.send_and_receive(
-            "", pass_event="evt_extraction_fan_drive_fault_code"
-        )
+        response = await self.send_and_receive("", pass_event="evt_extraction_fan_drive_fault_code")
         response_json = json.loads(response)
         self.assertEqual(response_json["data"], fault_code)

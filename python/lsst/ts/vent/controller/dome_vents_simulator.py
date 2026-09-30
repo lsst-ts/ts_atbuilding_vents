@@ -57,9 +57,7 @@ class DomeVentsSimulator:
     async def stop(self) -> None:
         await self.modbus_simulator.stop()
 
-    def read_channel(
-        self, bus_number: int, stack_number: int, channel_number: int
-    ) -> int:
+    def read_channel(self, bus_number: int, stack_number: int, channel_number: int) -> int:
         """Simulates the behavior of seequent.read_channel, as if connected
         to dome vents configured as described in config.py.
 
@@ -93,9 +91,7 @@ class DomeVentsSimulator:
         assert 0 <= channel_number <= 15
         return self.input_bits[channel_number]
 
-    def write_channel(
-        self, bus_number: int, stack_number: int, channel_number: int, value: int
-    ) -> None:
+    def write_channel(self, bus_number: int, stack_number: int, channel_number: int, value: int) -> None:
         """Simulates the behavior of sequent.write_channel, as if connected
         to dome vents configured as described in config.py.
 
@@ -127,9 +123,7 @@ class DomeVentsSimulator:
         assert stack_number == self.cfg.megaind_stack
         assert 0 <= channel_number <= 15
         assert value == 0 or value == 1
-        vent_number_array = [
-            i for i in range(4) if self.cfg.vent_signal_ch[i] - 1 == channel_number
-        ]
+        vent_number_array = [i for i in range(4) if self.cfg.vent_signal_ch[i] - 1 == channel_number]
         assert len(vent_number_array) <= 1
         if len(vent_number_array) == 1:
             vent_number = vent_number_array[0]
