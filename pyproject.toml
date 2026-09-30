@@ -7,6 +7,7 @@ name = "ts_atbuilding_vents"
 description = "AT dome vent controller for `Vera C. Rubin Observatory <https://lsst.org>`_."
 license = { text = "GPL" }
 classifiers = [ "Programming Language :: Python :: 3" ]
+readme = "README.rst"
 urls = { source_code = "https://github.com/lsst-ts/ts_atbuilding_vents"}
 dynamic = ["version"]
 dependencies = [ "backoff", "pymodbus", "smbus3" ]
