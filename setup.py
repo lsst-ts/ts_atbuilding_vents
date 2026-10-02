@@ -23,6 +23,7 @@ import setuptools_scm
 
 setuptools.setup(
     version=setuptools_scm.get_version(
-        write_to="python/lsst/ts/vent/controller/version.py"
+        write_to="python/lsst/ts/vent/controller/version.py",
+        local_scheme="no-local-version",
     )
 )

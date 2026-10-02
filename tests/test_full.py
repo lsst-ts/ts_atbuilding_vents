@@ -45,9 +45,7 @@ class TestFull(unittest.IsolatedAsyncioTestCase):
         self.controller = Controller(cfg, simulate=True)
         await self.controller.connect()
 
-        self.dispatcher = Dispatcher(
-            port=1234, log=self.log, controller=self.controller
-        )
+        self.dispatcher = Dispatcher(port=1234, log=self.log, controller=self.controller)
         await self.dispatcher.start_task
 
         # Connect to the dispatcher
@@ -67,13 +65,9 @@ class TestFull(unittest.IsolatedAsyncioTestCase):
     async def send_and_receive(
         self, message: str, pass_event: str | None = None, pass_telemetry: bool = False
     ) -> str:
-        await asyncio.wait_for(
-            self.client.write_str(message + "\r\n"), timeout=TCP_TIMEOUT
-        )
+        await asyncio.wait_for(self.client.write_str(message + "\r\n"), timeout=TCP_TIMEOUT)
         for i in range(1000):
-            response = await asyncio.wait_for(
-                self.client.read_str(), timeout=TCP_TIMEOUT
-            )
+            response = await asyncio.wait_for(self.client.read_str(), timeout=TCP_TIMEOUT)
             if "evt_" in response:
                 if pass_event is not None and pass_event in response:
                     break
@@ -86,9 +80,7 @@ class TestFull(unittest.IsolatedAsyncioTestCase):
         response = response.strip()
         return response
 
-    def check_response(
-        self, response: str, expected_command: str, expected_error: str | None = None
-    ) -> None:
+    def check_response(self, response: str, expected_command: str, expected_error: str | None = None) -> None:
         json_data = json.loads(response)
         self.assertEqual(json_data["command"], expected_command)
         if expected_error is None:
@@ -120,26 +112,14 @@ class TestFull(unittest.IsolatedAsyncioTestCase):
         self.check_response(response, "close_vent_gate", "ValueError")
 
     async def test_fan_manual(self) -> None:
-        response = await self.send_and_receive(
-            "set_extraction_fan_manual_control_mode True"
-        )
+        response = await self.send_and_receive("set_extraction_fan_manual_control_mode True")
         self.check_response(response, "set_extraction_fan_manual_control_mode")
-        response = await self.send_and_receive(
-            "set_extraction_fan_manual_control_mode False"
-        )
+        response = await self.send_and_receive("set_extraction_fan_manual_control_mode False")
         self.check_response(response, "set_extraction_fan_manual_control_mode")
-        response = await self.send_and_receive(
-            "set_extraction_fan_manual_control_mode Nachos"
-        )
-        self.check_response(
-            response, "set_extraction_fan_manual_control_mode", "ValueError"
-        )
-        response = await self.send_and_receive(
-            "set_extraction_fan_manual_control_mode sour cream"
-        )
-        self.check_response(
-            response, "set_extraction_fan_manual_control_mode", "TypeError"
-        )
+        response = await self.send_and_receive("set_extraction_fan_manual_control_mode Nachos")
+        self.check_response(response, "set_extraction_fan_manual_control_mode", "ValueError")
+        response = await self.send_and_receive("set_extraction_fan_manual_control_mode sour cream")
+        self.check_response(response, "set_extraction_fan_manual_control_mode", "TypeError")
 
     async def test_start_fan(self) -> None:
         response = await self.send_and_receive("start_extraction_fan")

@@ -23,9 +23,10 @@ import logging
 import typing
 
 import backoff
-from lsst.ts.xml.enums.ATBuilding import FanDriveState, VentGateState
 from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import ConnectionException, ModbusException
+
+from lsst.ts.xml.enums.ATBuilding import FanDriveState, VentGateState
 
 from . import sequent, vf_drive
 from .config import Config
@@ -130,8 +131,7 @@ class Controller:
             raise
 
         self.log.info(
-            f"Connected to the variable frequency drive at "
-            f"{self.config.hostname}:{self.config.port}."
+            f"Connected to the variable frequency drive at {self.config.hostname}:{self.config.port}."
         )
 
     async def stop(self) -> None:
@@ -235,12 +235,7 @@ class Controller:
         self.log.debug("get fan_manual_control")
         assert self.connected
         assert self.vfd_client is not None
-        settings = tuple(
-            [
-                (await self.read_registers(address=addr))[0]
-                for addr in vf_drive.CFG_REGISTERS
-            ]
-        )
+        settings = tuple([(await self.read_registers(address=addr))[0] for addr in vf_drive.CFG_REGISTERS])
         if settings == vf_drive.MANUAL:
             return True
         if settings == vf_drive.AUTO:
@@ -323,9 +318,7 @@ class Controller:
         assert self.connected
         assert self.vfd_client is not None
 
-        output_frequency = float(
-            (await self.read_registers(address=vf_drive.Registers.RFR_REGISTER))[0]
-        )
+        output_frequency = float((await self.read_registers(address=vf_drive.Registers.RFR_REGISTER))[0])
         output_frequency *= 0.1  # RFR register holds frequency in units of 0.1 Hz
         return output_frequency
 
@@ -441,9 +434,7 @@ class Controller:
         assert self.connected
         assert self.vfd_client is not None
 
-        drive_voltage = float(
-            (await self.read_registers(address=vf_drive.Registers.ULN_REGISTER))[0]
-        )
+        drive_voltage = float((await self.read_registers(address=vf_drive.Registers.ULN_REGISTER))[0])
         drive_voltage *= 0.1  # ULN register holds voltage in units of 0.1 V
         return drive_voltage
 
@@ -469,13 +460,8 @@ class Controller:
         self.log.debug("last8faults")
         assert self.connected
         assert self.vfd_client is not None
-        rvals = await self.read_registers(
-            address=vf_drive.Registers.FAULT_REGISTER, count=8
-        )
-        return [
-            (r, vf_drive.FAULTS.get(r, f"Unknown fault code {r}"))
-            for r in reversed(rvals)
-        ]
+        rvals = await self.read_registers(address=vf_drive.Registers.FAULT_REGISTER, count=8)
+        return [(r, vf_drive.FAULTS.get(r, f"Unknown fault code {r}")) for r in reversed(rvals)]
 
     def vent_open(self, vent_number: int) -> None:
         """Opens the specified vent.
@@ -595,9 +581,7 @@ class Controller:
             case _:
                 return VentGateState.FAULT
 
-    def read_channel(
-        self, bus_number: int, stack_number: int, channel_number: int
-    ) -> int:
+    def read_channel(self, bus_number: int, stack_number: int, channel_number: int) -> int:
         """Calls hardware I/O or a simulated substitute depending
         whether the class was instantiated with simulate = True.
 
@@ -631,9 +615,7 @@ class Controller:
         else:
             return sequent.read_channel(bus_number, stack_number, channel_number)
 
-    def write_channel(
-        self, bus_number: int, stack_number: int, channel_number: int, value: int
-    ) -> None:
+    def write_channel(self, bus_number: int, stack_number: int, channel_number: int, value: int) -> None:
         """Calls harware I/O or a simulated substitute depending
         whether the class was instantiated with simulate = True.
 
@@ -660,8 +642,6 @@ class Controller:
 
         assert self.connected
         if self.simulator is not None:
-            self.simulator.write_channel(
-                bus_number, stack_number, channel_number, value
-            )
+            self.simulator.write_channel(bus_number, stack_number, channel_number, value)
         else:
             sequent.write_channel(bus_number, stack_number, channel_number, value)
